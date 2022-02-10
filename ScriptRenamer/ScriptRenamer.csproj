@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.1" GeneratePathProperty="true" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.3" GeneratePathProperty="true" />
     <PackageReference Include="Shoko.Plugin.Abstractions" Version="2.2.0" />
   </ItemGroup>
 

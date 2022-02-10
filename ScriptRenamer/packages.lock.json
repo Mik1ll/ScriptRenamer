@@ -4,9 +4,9 @@
     ".NETCoreApp,Version=v5.0": {
       "Antlr4.Runtime.Standard": {
         "type": "Direct",
-        "requested": "[4.9.1, )",
-        "resolved": "4.9.1",
-        "contentHash": "2b6SrwXRa3lgJ7nQyG+EZFJHGDWRW0Bb8KfqdXaAVL3QoGOuXkFRLBxTIbRt1lNUop9k++SG2kid/pl1Q49UGw=="
+        "requested": "[4.9.3, )",
+        "resolved": "4.9.3",
+        "contentHash": "wn+a34a9r3jOMxnIWxWJQ7QAbKi+KyZ9YAiEVVw0qII0J4Z6Z9F6a1b8WNzU00LlsIt++nZIz1BokksielrQYA=="
       },
       "Shoko.Plugin.Abstractions": {
         "type": "Direct",
