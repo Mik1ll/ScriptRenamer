@@ -20,15 +20,15 @@ namespace ScriptRenamer
         private static ParserRuleContext _context;
         private static Exception _contextException;
         private static readonly Type Repofact = GetTypeFromAssemblies("Shoko.Server.Repositories.RepoFactory");
-        private static readonly dynamic VideoLocalRepo = Repofact.GetProperty("VideoLocal")?.GetValue(null);
-        private static readonly dynamic ImportFolderRepo = Repofact.GetProperty("ImportFolder")?.GetValue(null);
+        private static readonly dynamic VideoLocalRepo = Repofact?.GetProperty("VideoLocal")?.GetValue(null);
+        private static readonly dynamic ImportFolderRepo = Repofact?.GetProperty("ImportFolder")?.GetValue(null);
 
         public (IImportFolder destination, string subfolder) GetDestination(MoveEventArgs args)
         {
             var visitor = new ScriptRenamerVisitor(args, false);
             CheckBadArgs(visitor);
             SetupAndLaunch(visitor);
-            if (visitor.FindLastLocation)
+            if (visitor.FindLastLocation && ImportFolderRepo is not null && VideoLocalRepo is not null)
             {
                 IImportFolder fld = null;
                 var lastFileLocation = ((IEnumerable<dynamic>)VideoLocalRepo.GetByAniDBAnimeID(visitor.AnimeInfo.AnimeID))
@@ -59,7 +59,7 @@ namespace ScriptRenamer
                   Path.GetExtension(args.FileInfo.Filename)
                 : null;
         }
-        
+
         private static MoveEventArgs RenameArgsToMoveArgs(RenameEventArgs args) => new()
         {
             Cancel = args.Cancel,
