@@ -32,7 +32,7 @@ if (AnimeTitleEnglish)
 else
     add AnimeTitle ' ';
 // Only adds episode numbers and titles if it is an episode or movie with parts
-if (not (AnimeType is Movie and EpisodeCount == 1)) {
+if (not (AnimeType is Movie and EpisodeTitleEnglish contains 'Complete Movie')) {
     add EpisodeNumbers pad 10;
     if (Version > 1)
         add 'v' Version;
@@ -47,7 +47,7 @@ if (not (AnimeType is Movie and EpisodeCount == 1)) {
     }
 }
 add '(' Resolution ' ' VideoCodecShort ' ';
-if (BitDepth)
+if (BitDepth and BitDepth != 8)
     add BitDepth 'bit ';
 add Source ') ';
 if (DubLanguages has English)
@@ -167,7 +167,7 @@ Restricted
 Censored
 Chaptered
 ManuallyLinked
-InDropSource    // True if import folder moving from is a drop source **Not available while renaming**
+InDropSource    // True if import folder moving from is a drop source
 MultiLinked    // If file is linked with multiple episodes
 ```
 
@@ -178,7 +178,7 @@ DubLanguages
 SubLanguages
 AnimeTitles
 EpisodeTitles
-ImportFolders    // Available drop folders (marked as destination) **Not available while renaming**
+ImportFolders    // Available drop folders (marked as destination)
 ```
 
 #### Enumerations

@@ -439,14 +439,14 @@ namespace ScriptRenamerTests
         [DynamicData(nameof(TestEpisodeSelectionAndNameData))]
         public void TestEpisodeSelectionAndName(List<IEpisode> episodes, int eEpisodeId, string eEpisodesString)
         {
-            var visitor = new ScriptRenamerVisitor(new RenameEventArgs
+            var visitor = new ScriptRenamerVisitor(new MoveEventArgs
             {
                 AnimeInfo = new List<IAnime>
                 {
                     Mock.Of<IAnime>(a => a.AnimeID == 10)
                 },
                 EpisodeInfo = episodes
-            });
+            }, true);
             Assert.AreEqual(eEpisodeId, visitor.EpisodeInfo.EpisodeID);
             var parser = Setup("add EpisodeNumbers;");
             var context = parser.start();
@@ -535,14 +535,14 @@ namespace ScriptRenamerTests
         [DynamicData(nameof(TestLastEpisodeNumberData))]
         public void TestLastEpisodeNumber(List<IEpisode> episodes, string expected)
         {
-            var visitor = new ScriptRenamerVisitor(new RenameEventArgs()
+            var visitor = new ScriptRenamerVisitor(new MoveEventArgs()
             {
                 AnimeInfo = new List<IAnime>
                 {
                     Mock.Of<IAnime>(a => a.AnimeID == 10)
                 },
                 EpisodeInfo = episodes
-            });
+            }, true);
             var parser = Setup("add EpisodeNumber '-' LastEpisodeNumber;");
             var context = parser.start();
             _ = visitor.Visit(context);

@@ -21,44 +21,9 @@ namespace ScriptRenamer
         {
         }
 
-        public ScriptRenamerVisitor(RenameEventArgs args)
+        public ScriptRenamerVisitor(MoveEventArgs args, bool renaming)
         {
-            Renaming = true;
-            AvailableFolders = new List<IImportFolder>();
-            Init(args);
-        }
-
-        public ScriptRenamerVisitor(MoveEventArgs args)
-        {
-            Renaming = false;
-            AvailableFolders = args.AvailableFolders;
-            Init(new RenameEventArgs
-            {
-                AnimeInfo = args.AnimeInfo,
-                EpisodeInfo = args.EpisodeInfo,
-                Script = args.Script,
-                FileInfo = args.FileInfo,
-                GroupInfo = args.GroupInfo,
-                Cancel = args.Cancel
-            });
-        }
-
-        public bool Renaming { get; set; } = true;
-        public bool FindLastLocation { get; set; }
-        public bool RemoveReservedChars { get; set; }
-
-        public List<IImportFolder> AvailableFolders { get; init; } = new();
-        public IVideoFile FileInfo { get; set; }
-        public IAnime AnimeInfo { get; set; }
-        public IGroup GroupInfo { get; set; }
-        public IEpisode EpisodeInfo { get; set; }
-        public IRenameScript Script { get; set; }
-        public List<IEpisode> Episodes { get; set; }
-
-        private int LastEpisodeNumber { get; set; }
-
-        private void Init(RenameEventArgs args)
-        {
+            Renaming = renaming;
             AnimeInfo = args.AnimeInfo.FirstOrDefault();
             EpisodeInfo = args.EpisodeInfo.Where(e => e.AnimeID == AnimeInfo?.AnimeID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
@@ -71,8 +36,23 @@ namespace ScriptRenamer
             GroupInfo = args.GroupInfo?.FirstOrDefault();
             Script = args.Script;
             Episodes = new List<IEpisode>(args.EpisodeInfo);
+            AvailableFolders = args.AvailableFolders;
         }
 
+        public bool Renaming { get; set; } = true;
+        public bool FindLastLocation { get; set; }
+        public bool RemoveReservedChars { get; set; }
+
+        public List<IImportFolder> AvailableFolders { get; set; } = new();
+        public IVideoFile FileInfo { get; set; }
+        public IAnime AnimeInfo { get; set; }
+        public IGroup GroupInfo { get; set; }
+        public IEpisode EpisodeInfo { get; set; }
+        public IRenameScript Script { get; set; }
+        public List<IEpisode> Episodes { get; set; }
+
+        private int LastEpisodeNumber { get; set; }
+        
         #region expressions
 
         public override object VisitBool_expr([NotNull] SRP.Bool_exprContext context)

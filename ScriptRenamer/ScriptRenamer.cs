@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,12 +25,8 @@ namespace ScriptRenamer
 
         public (IImportFolder destination, string subfolder) GetDestination(MoveEventArgs args)
         {
-            var visitor = new ScriptRenamerVisitor(args);
-            if (CheckBadArgs(visitor))
-            {
-                args.Cancel = true;
-                return (null, null);
-            }
+            var visitor = new ScriptRenamerVisitor(args, false);
+            CheckBadArgs(visitor);
             SetupAndLaunch(visitor);
             if (visitor.FindLastLocation)
             {
@@ -51,18 +48,31 @@ namespace ScriptRenamer
 
         public string GetFilename(RenameEventArgs args)
         {
-            var visitor = new ScriptRenamerVisitor(args);
-            if (CheckBadArgs(visitor))
+            var visitor = new ScriptRenamerVisitor(RenameArgsToMoveArgs(args), true)
             {
-                args.Cancel = true;
-                return null;
-            }
+                Renaming = true
+            };
+            CheckBadArgs(visitor);
             SetupAndLaunch(visitor);
             return !string.IsNullOrWhiteSpace(visitor.Filename)
                 ? RemoveInvalidFilenameChars(visitor.RemoveReservedChars ? visitor.Filename : visitor.Filename.ReplaceInvalidPathCharacters()) +
                   Path.GetExtension(args.FileInfo.Filename)
                 : null;
         }
+        
+        private static MoveEventArgs RenameArgsToMoveArgs(RenameEventArgs args) => new()
+        {
+            Cancel = args.Cancel,
+            AvailableFolders = ImportFolderRepo is not null
+                ? ((IEnumerable)ImportFolderRepo.GetAll()).Cast<IImportFolder>()
+                .Where(a => a.DropFolderType != DropFolderType.Excluded).ToList<IImportFolder>()
+                : new List<IImportFolder>(),
+            FileInfo = args.FileInfo,
+            AnimeInfo = args.AnimeInfo,
+            GroupInfo = args.GroupInfo,
+            EpisodeInfo = args.EpisodeInfo,
+            Script = args.Script
+        };
 
         private static Type GetTypeFromAssemblies(string typeName)
         {
@@ -172,13 +182,14 @@ namespace ScriptRenamer
             }
         }
 
-        private static bool CheckBadArgs(ScriptRenamerVisitor visitor)
+        private static void CheckBadArgs(ScriptRenamerVisitor visitor)
         {
             if (string.IsNullOrWhiteSpace(visitor.Script?.Script))
                 throw new ArgumentException("Script is empty or null");
             if (visitor.Script.Type != RenamerId)
                 throw new ArgumentException($"Script doesn't match {RenamerId}");
-            return visitor.AnimeInfo is null || visitor.EpisodeInfo is null;
+            if (visitor.AnimeInfo == null || visitor.EpisodeInfo is null)
+                throw new ArgumentException("No anime and/or episode info");
         }
 
         public static string NormPath(string path)
