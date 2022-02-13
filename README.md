@@ -48,8 +48,10 @@ if (not (AnimeType is Movie and EpisodeTitleEnglish contains 'Complete Movie')) 
 }
 add '(' Resolution ' ' VideoCodecShort ' ';
 if (BitDepth and BitDepth != 8)
-    add BitDepth 'bit ';
-add Source ') ';
+    add BitDepth 'bit';
+if (Source)
+  add ' ' Source;
+add ') ';
 if (DubLanguages has English)
     if (DubLanguages has Japanese)
         add '[DUAL-AUDIO] ';
@@ -65,6 +67,11 @@ if (Restricted)
 add '[' CRCUpper ']';
 // Truncate filename just in case, old windows max path length is 260 chars
 filename set trunc(Filename, 120);
+
+if (SeriesInGroup > 1)
+  subfolder set GroupName '/' AnimeTitle;
+else
+  subfolder set AnimeTitle;
 ```
 
 ### Snippets
