@@ -28,22 +28,32 @@ namespace ScriptRenamer
             var visitor = new ScriptRenamerVisitor(args, false);
             CheckBadArgs(visitor);
             SetupAndLaunch(visitor);
-            if (visitor.FindLastLocation && ImportFolderRepo is not null && VideoLocalRepo is not null)
+            if (visitor.FindLastLocation)
             {
-                IImportFolder fld = null;
-                var lastFileLocation = ((IEnumerable<dynamic>)VideoLocalRepo.GetByAniDBAnimeID(visitor.AnimeInfo.AnimeID))
-                    .Where(vl => !string.Equals(vl.CRC32, visitor.FileInfo.Hashes.CRC, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(vl => vl.DateTimeUpdated)
-                    .Select(vl => vl.GetBestVideoLocalPlace())
-                    .FirstOrDefault(vlp => (fld = (IImportFolder)ImportFolderRepo.GetByID(vlp.ImportFolderID)) is not null &&
-                                           (fld.DropFolderType.HasFlag(DropFolderType.Destination) || fld.DropFolderType.HasFlag(DropFolderType.Excluded)));
-                string subFld = Path.GetDirectoryName(lastFileLocation?.FilePath);
-                if (fld is not null && subFld is not null)
-                    return (fld, subFld);
+                var result = FindLastFileLocation(visitor);
+                if (result.HasValue)
+                    return result.Value;
             }
             var (destfolder, olddestfolder) = GetNewAndOldDestinations(args, visitor);
             var subfolder = GetNewSubfolder(args, visitor, olddestfolder);
             return (destfolder, subfolder);
+        }
+
+        private static (IImportFolder destination, string subfolder)? FindLastFileLocation(ScriptRenamerVisitor visitor)
+        {
+            if (VideoLocalRepo is null || ImportFolderRepo is null)
+                return null;
+            IImportFolder fld = null;
+            var lastFileLocation = ((IEnumerable<dynamic>)VideoLocalRepo.GetByAniDBAnimeID(visitor.AnimeInfo.AnimeID))
+                .Where(vl => !string.Equals(vl.CRC32, visitor.FileInfo.Hashes.CRC, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(vl => vl.DateTimeUpdated)
+                .Select(vl => vl.GetBestVideoLocalPlace())
+                .FirstOrDefault(vlp => (fld = (IImportFolder)ImportFolderRepo.GetByID(vlp.ImportFolderID)) is not null &&
+                                       (fld.DropFolderType.HasFlag(DropFolderType.Destination) || fld.DropFolderType.HasFlag(DropFolderType.Excluded)));
+            string subFld = Path.GetDirectoryName(lastFileLocation?.FilePath);
+            if (fld is not null && subFld is not null)
+                return (fld, subFld);
+            return null;
         }
 
         public string GetFilename(RenameEventArgs args)
