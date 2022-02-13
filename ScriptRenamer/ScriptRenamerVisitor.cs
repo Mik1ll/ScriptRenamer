@@ -486,7 +486,7 @@ namespace ScriptRenamer
         {
             return AvailableFolders.OrderByDescending(f => f.Location.Length)
                 .FirstOrDefault(f =>
-                    $"{ScriptRenamer.NormPath(FileInfo.FilePath)}/".StartsWith($"{ScriptRenamer.NormPath(f.Location)}/", StringComparison.OrdinalIgnoreCase));
+                    ScriptRenamer.NormPath(FileInfo.FilePath).StartsWith(ScriptRenamer.NormPath(f.Location), StringComparison.OrdinalIgnoreCase));
         }
 
         #endregion utility

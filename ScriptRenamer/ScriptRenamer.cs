@@ -89,22 +89,21 @@ namespace ScriptRenamer
             var oldsubfolder = string.Empty;
             if (olddestfolder is not null)
             {
-                var olddest = $"{NormPath(olddestfolder.Location)}/";
-                oldsubfolder = string.Concat($"{NormPath(Path.GetDirectoryName(args.FileInfo.FilePath))}/".SkipWhile((ch, i) => i < olddest.Length
-                    && char.ToUpperInvariant(olddest[i]) == char.ToUpperInvariant(ch))).TrimEnd('/');
+                var olddest = NormPath(olddestfolder.Location) + Path.DirectorySeparatorChar;
+                oldsubfolder = Path.GetRelativePath(olddest, Path.GetDirectoryName(NormPath(args.FileInfo.FilePath))!);
             }
             var subfolder = string.Empty;
-            var oldsubfoldersplit = olddestfolder is null ? Array.Empty<string>() : oldsubfolder.Split('/');
+            var oldsubfoldersplit = olddestfolder is null ? Array.Empty<string>() : oldsubfolder.Split(Path.DirectorySeparatorChar);
             var newsubfoldersplit = visitor.Subfolder.Trim((char)0x1F).Split((char)0x1F)
                 .Select(f => f == "*" ? f : RemoveInvalidFilenameChars(visitor.RemoveReservedChars ? f : f.ReplaceInvalidPathCharacters())).ToArray();
             for (var i = 0; i < newsubfoldersplit.Length; i++)
                 if (newsubfoldersplit[i] == "*")
                     if (i < oldsubfoldersplit.Length)
-                        subfolder += oldsubfoldersplit[i] + '/';
+                        subfolder += oldsubfoldersplit[i] + Path.DirectorySeparatorChar;
                     else
                         throw new ArgumentException("Could not find subfolder from wildcard");
                 else
-                    subfolder += newsubfoldersplit[i] + '/';
+                    subfolder += newsubfoldersplit[i] + Path.DirectorySeparatorChar;
             subfolder = NormPath(subfolder);
             return subfolder;
         }
@@ -116,7 +115,7 @@ namespace ScriptRenamer
             {
                 destfolder = args.AvailableFolders
                     // Order by common prefix (stronger version of same drive)
-                    .OrderBy(f => string.Concat(NormPath(args.FileInfo.FilePath)
+                    .OrderByDescending(f => string.Concat(NormPath(args.FileInfo.FilePath)
                         .TakeWhile((ch, i) => i < NormPath(f.Location).Length
                                               && char.ToUpperInvariant(NormPath(f.Location)[i]) == char.ToUpperInvariant(ch))).Length)
                     .FirstOrDefault(f => f.DropFolderType.HasFlag(DropFolderType.Destination));
@@ -194,7 +193,7 @@ namespace ScriptRenamer
 
         public static string NormPath(string path)
         {
-            return path?.Replace('\\', '/').TrimEnd('/');
+            return path?.Replace('/', Path.DirectorySeparatorChar).TrimEnd(Path.DirectorySeparatorChar);
         }
 
         private static string RemoveInvalidFilenameChars(string filename)
