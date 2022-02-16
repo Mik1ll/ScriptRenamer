@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Antlr4.Runtime.Misc;
+using Microsoft.Extensions.Logging;
 using Shoko.Plugin.Abstractions;
 using Shoko.Plugin.Abstractions.DataModels;
 using SRP = ScriptRenamerParser;
@@ -13,6 +14,7 @@ namespace ScriptRenamer
 {
     public class ScriptRenamerVisitor : ScriptRenamerBaseVisitor<object>
     {
+        private readonly ILogger _logger;
         public string Destination;
         public string Filename;
         public string Subfolder;
@@ -21,8 +23,9 @@ namespace ScriptRenamer
         {
         }
 
-        public ScriptRenamerVisitor(MoveEventArgs args, bool renaming)
+        public ScriptRenamerVisitor(MoveEventArgs args, bool renaming, ILogger logger = null)
         {
+            _logger = logger;
             Renaming = renaming;
             AnimeInfo = args.AnimeInfo.FirstOrDefault();
             EpisodeInfo = args.EpisodeInfo.Where(e => e.AnimeID == AnimeInfo?.AnimeID)
@@ -52,7 +55,7 @@ namespace ScriptRenamer
         public List<IEpisode> Episodes { get; set; }
 
         private int LastEpisodeNumber { get; set; }
-        
+
         #region expressions
 
         public override object VisitBool_expr([NotNull] SRP.Bool_exprContext context)
@@ -389,7 +392,7 @@ namespace ScriptRenamer
         public override object VisitStmt([NotNull] SRP.StmtContext context)
         {
             var ctx = context.cancel?.Type ?? context.FINDLASTLOCATION()?.Symbol.Type ??
-                context.REMOVERESERVEDCHARS()?.Symbol.Type ?? (object)context.target_labels()?.label.Type;
+                context.REMOVERESERVEDCHARS()?.Symbol.Type ?? context.log?.Type ?? (object)context.target_labels()?.label.Type;
             return ctx switch
             {
                 SRP.CANCEL => throw new ParseCanceledException(
@@ -400,6 +403,10 @@ namespace ScriptRenamer
                 SRP.DESTINATION when !Renaming => DoAction(ref Destination),
                 SRP.SUBFOLDER when !Renaming => DoAction(ref Subfolder),
                 SRP.REMOVERESERVEDCHARS => RemoveReservedChars = true,
+                // @formatter:off
+                SRP.LOG => ((Func<object>)(() => { _logger.LogInformation(AggregateString()); return null; }))(),
+                SRP.LOGERROR => ((Func<object>)(() => { _logger.LogError(AggregateString()); return null; }))(),
+                // @formatter:on
                 not (SRP.DESTINATION or SRP.SUBFOLDER) when Renaming && context.op is not null => DoAction(ref Filename),
                 _ when context.op is not null => null,
                 _ => throw new ParseCanceledException("Could not parse VisitStmt")
@@ -456,10 +463,16 @@ namespace ScriptRenamer
                                    ?? FileInfo.MediaInfo?.Audio?.Select(a => a.SimplifiedCodec).Distinct().ToList()
                                    ?? new List<string>(),
                 SRP.DUBLANGUAGES => FileInfo.AniDBFileInfo?.MediaInfo?.AudioLanguages?.Distinct().ToList()
-                                    ?? FileInfo.MediaInfo?.Audio?.Select(a => ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown ? ParseEnum<TitleLanguage>(a.Title, false) : l).Distinct().ToList()
+                                    ?? FileInfo.MediaInfo?.Audio?.Select(a =>
+                                        ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown
+                                            ? ParseEnum<TitleLanguage>(a.Title, false)
+                                            : l).Distinct().ToList()
                                     ?? new List<TitleLanguage>(),
                 SRP.SUBLANGUAGES => FileInfo.AniDBFileInfo?.MediaInfo?.SubLanguages?.Distinct().ToList()
-                                    ?? FileInfo.MediaInfo?.Subs?.Select(a => ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown ? ParseEnum<TitleLanguage>(a.Title, false) : l).Distinct().ToList()
+                                    ?? FileInfo.MediaInfo?.Subs?.Select(a =>
+                                        ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown
+                                            ? ParseEnum<TitleLanguage>(a.Title, false)
+                                            : l).Distinct().ToList()
                                     ?? new List<TitleLanguage>(),
                 SRP.ANIMETITLES => AnimeInfo.Titles.ToList(),
                 SRP.EPISODETITLES => EpisodeInfo.Titles.ToList(),

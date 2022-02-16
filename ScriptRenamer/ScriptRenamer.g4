@@ -22,6 +22,7 @@ grammar ScriptRenamer;
             |   cancel=(SKIPRENAME | SKIPMOVE)
             |   FINDLASTLOCATION
             |   REMOVERESERVEDCHARS
+            |   log=(LOG | LOGERROR) string_atom+
                 ) SEMICOLON
             ;
 
@@ -180,6 +181,8 @@ grammar ScriptRenamer;
     SKIPMOVE : 'skipmove';
     FINDLASTLOCATION : 'findlastlocation';
     REMOVERESERVEDCHARS : 'removereservedchars';
+    LOG : 'log';
+    LOGERROR : 'logerror';
 
 // Operators
     AND : 'and';

@@ -5,17 +5,19 @@ using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using Antlr4.Runtime;
-using Antlr4.Runtime.Misc;
+using Microsoft.Extensions.Logging;
 using Shoko.Plugin.Abstractions;
 using Shoko.Plugin.Abstractions.Attributes;
 using Shoko.Plugin.Abstractions.DataModels;
 
+
 namespace ScriptRenamer
 {
-    [Renamer(RenamerId)]
+    [Renamer(nameof(ScriptRenamer))]
+    // ReSharper disable once ClassNeverInstantiated.Global
     public class ScriptRenamer : IRenamer
     {
-        public const string RenamerId = nameof(ScriptRenamer);
+        private readonly ILogger<ScriptRenamer> _logger;
         private static string _script = string.Empty;
         private static ParserRuleContext _context;
         private static Exception _contextException;
@@ -23,9 +25,14 @@ namespace ScriptRenamer
         private static readonly dynamic VideoLocalRepo = Repofact?.GetProperty("VideoLocal")?.GetValue(null);
         private static readonly dynamic ImportFolderRepo = Repofact?.GetProperty("ImportFolder")?.GetValue(null);
 
+        public ScriptRenamer(ILogger<ScriptRenamer> logger)
+        {
+            _logger = logger;
+        }
+        
         public (IImportFolder destination, string subfolder) GetDestination(MoveEventArgs args)
         {
-            var visitor = new ScriptRenamerVisitor(args, false);
+            var visitor = new ScriptRenamerVisitor(args, false, _logger);
             CheckBadArgs(visitor);
             SetupAndLaunch(visitor);
             if (visitor.FindLastLocation)
@@ -58,7 +65,7 @@ namespace ScriptRenamer
 
         public string GetFilename(RenameEventArgs args)
         {
-            var visitor = new ScriptRenamerVisitor(RenameArgsToMoveArgs(args), true)
+            var visitor = new ScriptRenamerVisitor(RenameArgsToMoveArgs(args), true, _logger)
             {
                 Renaming = true
             };
@@ -195,8 +202,8 @@ namespace ScriptRenamer
         {
             if (string.IsNullOrWhiteSpace(visitor.Script?.Script))
                 throw new ArgumentException("Script is empty or null");
-            if (visitor.Script.Type != RenamerId)
-                throw new ArgumentException($"Script doesn't match {RenamerId}");
+            if (visitor.Script.Type != nameof(ScriptRenamer))
+                throw new ArgumentException($"Script doesn't match {nameof(ScriptRenamer)}");
             if (visitor.AnimeInfo == null || visitor.EpisodeInfo is null)
                 throw new ArgumentException("No anime and/or episode info");
         }

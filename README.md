@@ -249,6 +249,7 @@ Statements (All end with a semicolon):
 1. (skipRename | skipMove) ;   ```Skip renaming or moving, deferring to the next renamer/mover in the priority list```
 1. findLastLocation ;    ```Enables using last added file's location from the same anime```
 1. removeReservedChars ;    ```Remove reserved characters instead of replacing them with alternatives```
+1. (log | logError) ***string***+ ;    ```Logging```
 
 Collections:
 1. ***collection label***
