@@ -243,7 +243,6 @@ grammar ScriptRenamer;
         EPISODERELEASEDATE : 'episodereleasedate';
         FILERELEASEDATE : 'filereleasedate';
         OLDIMPORTFOLDER : 'oldimportfolder';
-        VIDEOCODECANIDB : 'videocodecanidb';
         EPISODENUMBERS : 'episodenumbers';
 
         // Date Fields
