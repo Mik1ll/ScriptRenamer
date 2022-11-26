@@ -183,7 +183,6 @@ namespace ScriptRenamer
                 SRP.EPISODEPREFIX => GetPrefix(EpisodeInfo.Type),
                 SRP.VIDEOCODECLONG => FileInfo.MediaInfo?.Video?.CodecID,
                 SRP.VIDEOCODECSHORT => FileInfo.MediaInfo?.Video?.SimplifiedCodec,
-                SRP.VIDEOCODECANIDB => FileInfo.AniDBFileInfo?.MediaInfo?.VideoCodec,
                 SRP.DURATION => FileInfo.MediaInfo?.General?.Duration.ToString(CultureInfo.InvariantCulture),
                 SRP.GROUPNAME => GroupInfo?.Name,
                 SRP.OLDFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.Filename),
@@ -396,7 +395,7 @@ namespace ScriptRenamer
             return ctx switch
             {
                 SRP.CANCEL => throw new ParseCanceledException(
-                    $"Line {context.cancel.Line} Column {context.cancel.Column} Cancelled: {AggregateString()}"),
+                    $"Line {context.cancel?.Line} Column {context.cancel?.Column} Cancelled: {AggregateString()}"),
                 SRP.SKIPRENAME => Renaming ? throw new SkipException() : null,
                 SRP.SKIPMOVE => Renaming ? null : throw new SkipException(),
                 SRP.FINDLASTLOCATION => FindLastLocation = true,
@@ -459,8 +458,7 @@ namespace ScriptRenamer
         {
             return tokenType switch
             {
-                SRP.AUDIOCODECS => FileInfo.AniDBFileInfo?.MediaInfo?.AudioCodecs?.Distinct().ToList()
-                                   ?? FileInfo.MediaInfo?.Audio?.Select(a => a.SimplifiedCodec).Distinct().ToList()
+                SRP.AUDIOCODECS => FileInfo.MediaInfo?.Audio?.Select(a => a.SimplifiedCodec).Distinct().ToList()
                                    ?? new List<string>(),
                 SRP.DUBLANGUAGES => FileInfo.AniDBFileInfo?.MediaInfo?.AudioLanguages?.Distinct().ToList()
                                     ?? FileInfo.MediaInfo?.Audio?.Select(a =>

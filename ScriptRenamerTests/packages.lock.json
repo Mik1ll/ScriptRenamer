@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    ".NETCoreApp,Version=v5.0": {
+    "net6.0": {
       "coverlet.msbuild": {
         "type": "Direct",
         "requested": "[3.1.2, )",
@@ -335,8 +335,8 @@
       },
       "Shoko.Plugin.Abstractions": {
         "type": "Transitive",
-        "resolved": "2.2.0",
-        "contentHash": "FOytlGNY3PmCfeU8oNYVb32Pq8L3tmisG063KzWuuvdyq8h1AJZWbY43HSakoj9uigLZw60iajeyC3rYqnPbNQ=="
+        "resolved": "2.4.0-alpha3",
+        "contentHash": "YqclrLPIf9lez5FxlQo0BRB+NbJoBXNrMM7NnpGiHIjCu5Wap14kiJ7nB8BaTOUQ/u2IIgfb492a48+9v0jXiw=="
       },
       "System.AppContext": {
         "type": "Transitive",
@@ -1204,9 +1204,9 @@
       "scriptrenamer": {
         "type": "Project",
         "dependencies": {
-          "Antlr4.Runtime.Standard": "4.9.3",
-          "Microsoft.Extensions.Logging.Abstractions": "5.0.0",
-          "Shoko.Plugin.Abstractions": "2.2.0"
+          "Antlr4.Runtime.Standard": "[4.9.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[5.0.0, )",
+          "Shoko.Plugin.Abstractions": "[2.4.0-alpha3, )"
         }
       }
     }

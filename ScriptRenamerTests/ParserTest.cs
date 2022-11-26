@@ -144,7 +144,6 @@ namespace ScriptRenamerTests
                         af.Source == "DVD" &&
                         af.Version == 2 &&
                         af.MediaInfo == Mock.Of<AniDBMediaData>(md =>
-                            md.AudioCodecs == new List<string> { "mp3", "FLAC", "opus" } &&
                             md.AudioLanguages == new List<TitleLanguage> { TitleLanguage.English, TitleLanguage.Japanese } &&
                             md.SubLanguages == new List<TitleLanguage>()
                         )
@@ -257,10 +256,9 @@ namespace ScriptRenamerTests
         [DataRow("if (DubLanguages has Japanese and not SubLanguages has English) add '[raw] ';\n"
                  + "if (AnimeTitles has English and Main and len(AnimeTitles has Main and English) == 2) filename add AnimeTitles has English and Main;\n"
                  + "if (len(ImportFolders) == 0) add ' empty import folder';\n"
-                 + "if (AudioCodecs has 'mp3') add ' has ' AudioCodecs has 'mp3';\n"
                  + "if (first(AnimeTitles)) add ' ' first(AnimeTitles);\n"
                  + "if (EpisodeTitles has English and Main) add ' ' EpisodeTitles has Main and English;\n",
-            "[raw] test, test4 empty import folder has mp3 test etest, etest4")]
+            "[raw] test, test4 empty import folder test etest, etest4")]
         [DataRow("if (len(DubLanguages)) add len(DubLanguages);", "2")]
         public void TestHasOperator(string input, string expected)
         {
@@ -271,7 +269,6 @@ namespace ScriptRenamerTests
                 FileInfo = Mock.Of<IVideoFile>(v =>
                     v.AniDBFileInfo == Mock.Of<IAniDBFile>(m =>
                         m.MediaInfo == Mock.Of<AniDBMediaData>(md =>
-                            md.AudioCodecs == new List<string> { "mp3", "FLAC", "opus" } &&
                             md.AudioLanguages == new List<TitleLanguage> { TitleLanguage.Afrikaans, TitleLanguage.Japanese } &&
                             md.SubLanguages == new List<TitleLanguage> { TitleLanguage.Hebrew, TitleLanguage.Galician }
                         )

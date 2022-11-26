@@ -136,7 +136,6 @@ EpisodeType
 EpisodePrefix
 VideoCodecLong    // Entire CodecID returned by MediaInfo (or AniDB if no local media info), usually you want the short codec
 VideoCodecShort    // Simplified video codec
-VideoCodecAniDB    // Codec string from AniDB
 Duration
 GroupName    // Shoko's Group name
 OldFilename     // Filename before the renamer script was run
