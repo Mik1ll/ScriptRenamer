@@ -150,7 +150,6 @@ grammar ScriptRenamer;
             |   OLDFILENAME
             |   ORIGINALFILENAME
             |   OLDIMPORTFOLDER
-            |   VIDEOCODECANIDB
             |   FILENAME
             |   DESTINATION
             |   SUBFOLDER)
