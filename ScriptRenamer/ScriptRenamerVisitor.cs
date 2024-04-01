@@ -28,15 +28,15 @@ namespace ScriptRenamer
             _logger = logger;
             Renaming = renaming;
             AnimeInfo = args.AnimeInfo.FirstOrDefault();
-            EpisodeInfo = args.EpisodeInfo.Where(e => e.AnimeID == AnimeInfo?.AnimeID)
+            EpisodeInfo = args.EpisodeInfo.Where(e => e.SeriesID == AnimeInfo?.ID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
-                .ThenBy(e => e.Number)
+                .ThenBy(e => e.EpisodeNumber)
                 .FirstOrDefault();
-            var seq = EpisodeInfo?.Number - 1 ?? 0;
-            LastEpisodeNumber = args.EpisodeInfo.Where(e => e.AnimeID == AnimeInfo?.AnimeID && e.Type == EpisodeInfo?.Type)
-                .OrderBy(e => e.Number).TakeWhile(e => e.Number == (seq += 1)).LastOrDefault()?.Number ?? -1;
+            var seq = EpisodeInfo?.EpisodeNumber - 1 ?? 0;
+            LastEpisodeNumber = args.EpisodeInfo.Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
+                .OrderBy(e => e.EpisodeNumber).TakeWhile(e => e.EpisodeNumber == (seq += 1)).LastOrDefault()?.EpisodeNumber ?? -1;
             FileInfo = args.FileInfo;
-            GroupInfo = args.GroupInfo?.FirstOrDefault();
+            GroupInfo = args.GroupInfo.FirstOrDefault();
             Script = args.Script;
             Episodes = new List<IEpisode>(args.EpisodeInfo);
             AvailableFolders = new List<IImportFolder>(args.AvailableFolders);
@@ -125,7 +125,7 @@ namespace ScriptRenamer
                     .Where(l => l == ParseEnum<TitleLanguage>(context.LANGUAGE_ENUM().GetText())).ToList(),
                 SRP.IMPORTFOLDERS when rhsString is not null => ((List<IImportFolder>)collection).Where(f =>
                     string.Equals(f.Name, rhsString, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(ScriptRenamer.NormPath(f.Location), ScriptRenamer.NormPath(rhsString), StringComparison.OrdinalIgnoreCase)).ToList(),
+                    || string.Equals(ScriptRenamer.NormPath(f.Path), ScriptRenamer.NormPath(rhsString), StringComparison.OrdinalIgnoreCase)).ToList(),
                 SRP.ANIMETITLES or SRP.EPISODETITLES when (context.TITLETYPE_ENUM() ?? context.LANGUAGE_ENUM()) is not null => ((List<AnimeTitle>)collection)
                     .Where(at => context.TITLETYPE_ENUM() is null || at.Type == ParseEnum<TitleType>(context.TITLETYPE_ENUM().GetText()))
                     .Where(at => context.LANGUAGE_ENUM() is null || at.Language == ParseEnum<TitleLanguage>(context.LANGUAGE_ENUM().GetText())).ToList(),
@@ -143,11 +143,11 @@ namespace ScriptRenamer
             return context.label.Type switch
             {
                 SRP.RESTRICTED => AnimeInfo.Restricted,
-                SRP.CENSORED => FileInfo.AniDBFileInfo?.Censored ?? false,
-                SRP.CHAPTERED => FileInfo.MediaInfo?.Chaptered ?? false,
-                SRP.MANUALLYLINKED => FileInfo.AniDBFileInfo is null,
+                SRP.CENSORED => FileInfo.VideoInfo?.AniDB?.Censored ?? false,
+                SRP.CHAPTERED => FileInfo.VideoInfo?.MediaInfo?.Chaptered ?? false,
+                SRP.MANUALLYLINKED => FileInfo.VideoInfo?.AniDB is null,
                 SRP.INDROPSOURCE => OldDestination()?.DropFolderType.HasFlag(DropFolderType.Source) ?? false,
-                SRP.MULTILINKED => Episodes.Count(e => e.AnimeID == AnimeInfo.AnimeID) > 1,
+                SRP.MULTILINKED => Episodes.Count(e => e.ID == AnimeInfo.ID) > 1,
                 _ => throw new ParseCanceledException("Could not parse bool_labels", context.exception)
             };
         }
@@ -165,44 +165,44 @@ namespace ScriptRenamer
                 SRP.EPISODETITLEENGLISH => EpisodeTitleLanguage(TitleLanguage.English),
                 SRP.EPISODETITLEJAPANESE => EpisodeTitleLanguage(TitleLanguage.Japanese),
                 SRP.GROUPSHORT =>
-                    FileInfo.AniDBFileInfo?.ReleaseGroup?.ShortName == "raw"
+                    FileInfo.VideoInfo?.AniDB?.ReleaseGroup?.ShortName == "raw"
                         ? null
-                        : FileInfo.AniDBFileInfo?.ReleaseGroup?.ShortName,
+                        : FileInfo.VideoInfo?.AniDB?.ReleaseGroup?.ShortName,
                 SRP.GROUPLONG =>
-                    FileInfo.AniDBFileInfo?.ReleaseGroup?.Name == "raw/unknown"
+                    FileInfo.VideoInfo?.AniDB?.ReleaseGroup?.Name == "raw/unknown"
                         ? null
-                        : FileInfo.AniDBFileInfo?.ReleaseGroup?.Name,
-                SRP.CRCLOWER => FileInfo.Hashes.CRC.ToLower(),
-                SRP.CRCUPPER => FileInfo.Hashes.CRC.ToUpper(),
-                SRP.SOURCE => FileInfo.AniDBFileInfo?.Source.Contains("unknown", StringComparison.OrdinalIgnoreCase) ?? true
+                        : FileInfo.VideoInfo?.AniDB?.ReleaseGroup?.Name,
+                SRP.CRCLOWER => FileInfo.VideoInfo?.Hashes.CRC?.ToLower(),
+                SRP.CRCUPPER => FileInfo.VideoInfo?.Hashes.CRC?.ToUpper(),
+                SRP.SOURCE => FileInfo.VideoInfo?.AniDB?.Source.Contains("unknown", StringComparison.OrdinalIgnoreCase) ?? true
                     ? null
-                    : FileInfo.AniDBFileInfo.Source,
-                SRP.RESOLUTION => FileInfo.MediaInfo?.Video?.StandardizedResolution,
+                    : FileInfo.VideoInfo?.AniDB.Source,
+                SRP.RESOLUTION => FileInfo.VideoInfo?.MediaInfo?.Video?.StandardizedResolution,
                 SRP.ANIMETYPE => AnimeInfo.Type.ToString(),
                 SRP.EPISODETYPE => EpisodeInfo.Type.ToString(),
                 SRP.EPISODEPREFIX => GetPrefix(EpisodeInfo.Type),
-                SRP.VIDEOCODECLONG => FileInfo.MediaInfo?.Video?.CodecID,
-                SRP.VIDEOCODECSHORT => FileInfo.MediaInfo?.Video?.SimplifiedCodec,
-                SRP.DURATION => FileInfo.MediaInfo?.General?.Duration.ToString(CultureInfo.InvariantCulture),
+                SRP.VIDEOCODECLONG => FileInfo.VideoInfo?.MediaInfo?.Video?.CodecID,
+                SRP.VIDEOCODECSHORT => FileInfo.VideoInfo?.MediaInfo?.Video?.SimplifiedCodec,
+                SRP.DURATION => FileInfo.VideoInfo?.MediaInfo?.General?.Duration.ToString(CultureInfo.InvariantCulture),
                 SRP.GROUPNAME => GroupInfo?.Name,
-                SRP.OLDFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.Filename),
-                SRP.ORIGINALFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.AniDBFileInfo?.OriginalFilename),
-                SRP.OLDIMPORTFOLDER => OldDestination()?.Location,
+                SRP.OLDFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.FileName),
+                SRP.ORIGINALFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.VideoInfo?.AniDB?.OriginalFilename),
+                SRP.OLDIMPORTFOLDER => OldDestination()?.Path,
                 SRP.FILENAME => Filename,
                 SRP.SUBFOLDER => Subfolder,
                 SRP.DESTINATION => Destination,
-                SRP.EPISODENUMBERS => Episodes.Where(e => e.AnimeID == AnimeInfo?.AnimeID)
-                    .OrderBy(e => e.Number)
+                SRP.EPISODENUMBERS => Episodes.Where(e => e.SeriesID == AnimeInfo?.ID)
+                    .OrderBy(e => e.EpisodeNumber)
                     .GroupBy(e => e.Type)
                     .OrderBy(g => g.Key)
                     .Aggregate("", (s, g) =>
                         s + " " + g.Aggregate(
                             (InRun: false, Seq: -1, Str: ""),
-                            (tup, ep) => ep.Number == tup.Seq + 1
-                                ? (true, ep.Number, tup.Str)
+                            (tup, ep) => ep.EpisodeNumber == tup.Seq + 1
+                                ? (true, ep.EpisodeNumber, tup.Str)
                                 : tup.InRun
-                                    ? (false, ep.Number, $"{tup.Str}-{tup.Seq.PadZeroes(pad)} {GetPrefix(g.Key)}{ep.Number.PadZeroes(pad)}")
-                                    : (false, ep.Number, $"{tup.Str} {GetPrefix(g.Key)}{ep.Number.PadZeroes(pad)}"),
+                                    ? (false, ep.EpisodeNumber, $"{tup.Str}-{tup.Seq.PadZeroes(pad)} {GetPrefix(g.Key)}{ep.EpisodeNumber.PadZeroes(pad)}")
+                                    : (false, ep.EpisodeNumber, $"{tup.Str} {GetPrefix(g.Key)}{ep.EpisodeNumber.PadZeroes(pad)}"),
                             tup => tup.InRun ? $"{tup.Str}-{tup.Seq.PadZeroes(pad)}" : tup.Str
                         ).Trim()
                     ).Trim(),
@@ -242,12 +242,12 @@ namespace ScriptRenamer
         {
             return context.label.Type switch
             {
-                SRP.ANIMEID => AnimeInfo.AnimeID,
-                SRP.EPISODEID => EpisodeInfo.EpisodeID,
-                SRP.EPISODENUMBER => EpisodeInfo.Number,
-                SRP.VERSION => FileInfo.AniDBFileInfo?.Version ?? 1,
-                SRP.WIDTH => FileInfo.MediaInfo?.Video?.Width ?? 0,
-                SRP.HEIGHT => FileInfo.MediaInfo?.Video?.Height ?? 0,
+                SRP.ANIMEID => AnimeInfo.ID,
+                SRP.EPISODEID => EpisodeInfo.ID,
+                SRP.EPISODENUMBER => EpisodeInfo.EpisodeNumber,
+                SRP.VERSION => FileInfo.VideoInfo?.AniDB?.Version ?? 1,
+                SRP.WIDTH => FileInfo.VideoInfo?.MediaInfo?.Video?.Width ?? 0,
+                SRP.HEIGHT => FileInfo.VideoInfo?.MediaInfo?.Video?.Height ?? 0,
                 SRP.EPISODECOUNT => EpisodeInfo.Type switch
                 {
                     EpisodeType.Episode => AnimeInfo.EpisodeCounts.Episodes,
@@ -258,8 +258,8 @@ namespace ScriptRenamer
                     EpisodeType.Other => AnimeInfo.EpisodeCounts.Others,
                     _ => throw new ParseCanceledException("Could not parse EpisodeCount", context.exception)
                 },
-                SRP.BITDEPTH => FileInfo.MediaInfo?.Video?.BitDepth ?? 0,
-                SRP.AUDIOCHANNELS => FileInfo.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
+                SRP.BITDEPTH => FileInfo.VideoInfo?.MediaInfo?.Video?.BitDepth ?? 0,
+                SRP.AUDIOCHANNELS => FileInfo.VideoInfo?.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
                 SRP.SERIESINGROUP => GroupInfo?.Series.Count ?? 1,
                 SRP.LASTEPISODENUMBER => LastEpisodeNumber,
                 SRP.MAXEPISODECOUNT => new[]
@@ -350,7 +350,7 @@ namespace ScriptRenamer
             {
                 SRP.ANIMERELEASEDATE => AnimeInfo.AirDate,
                 SRP.EPISODERELEASEDATE => EpisodeInfo.AirDate,
-                SRP.FILERELEASEDATE => FileInfo.AniDBFileInfo?.ReleaseDate,
+                SRP.FILERELEASEDATE => FileInfo.VideoInfo?.AniDB?.ReleaseDate,
                 _ => throw new ParseCanceledException("Could not parse date_atom", context.exception)
             };
             if (context.DOT() is not null)
@@ -403,8 +403,8 @@ namespace ScriptRenamer
                 SRP.SUBFOLDER when !Renaming => DoAction(ref Subfolder),
                 SRP.REMOVERESERVEDCHARS => RemoveReservedChars = true,
                 // @formatter:off
-                SRP.LOG => ((Func<object>)(() => { _logger.LogInformation(AggregateString()); return null; }))(),
-                SRP.LOGERROR => ((Func<object>)(() => { _logger.LogError(AggregateString()); return null; }))(),
+                SRP.LOG => ((Func<object>)(() => { _logger.LogInformation("{LogStatement}", AggregateString()); return null; }))(),
+                SRP.LOGERROR => ((Func<object>)(() => { _logger.LogError("{LogStatement}", AggregateString()); return null; }))(),
                 // @formatter:on
                 not (SRP.DESTINATION or SRP.SUBFOLDER) when Renaming && context.op is not null => DoAction(ref Filename),
                 _ when context.op is not null => null,
@@ -458,16 +458,16 @@ namespace ScriptRenamer
         {
             return tokenType switch
             {
-                SRP.AUDIOCODECS => FileInfo.MediaInfo?.Audio?.Select(a => a.SimplifiedCodec).Distinct().ToList()
+                SRP.AUDIOCODECS => FileInfo.VideoInfo?.MediaInfo?.Audio?.Select(a => a.SimplifiedCodec).Distinct().ToList()
                                    ?? new List<string>(),
-                SRP.DUBLANGUAGES => FileInfo.AniDBFileInfo?.MediaInfo?.AudioLanguages?.Distinct().ToList()
-                                    ?? FileInfo.MediaInfo?.Audio?.Select(a =>
+                SRP.DUBLANGUAGES => FileInfo.VideoInfo?.AniDB?.MediaInfo.AudioLanguages?.Distinct().ToList()
+                                    ?? FileInfo.VideoInfo?.MediaInfo?.Audio?.Select(a =>
                                         ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown
                                             ? ParseEnum<TitleLanguage>(a.Title, false)
                                             : l).Distinct().ToList()
                                     ?? new List<TitleLanguage>(),
-                SRP.SUBLANGUAGES => FileInfo.AniDBFileInfo?.MediaInfo?.SubLanguages?.Distinct().ToList()
-                                    ?? FileInfo.MediaInfo?.Subs?.Select(a =>
+                SRP.SUBLANGUAGES => FileInfo.VideoInfo?.AniDB?.MediaInfo?.SubLanguages?.Distinct().ToList()
+                                    ?? FileInfo.VideoInfo?.MediaInfo?.Subs?.Select(a =>
                                         ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown
                                             ? ParseEnum<TitleLanguage>(a.Title, false)
                                             : l).Distinct().ToList()
@@ -495,9 +495,9 @@ namespace ScriptRenamer
 
         private IImportFolder OldDestination()
         {
-            return AvailableFolders.OrderByDescending(f => f.Location.Length)
+            return AvailableFolders.OrderByDescending(f => f.Path.Length)
                 .FirstOrDefault(f =>
-                    ScriptRenamer.NormPath(FileInfo.FilePath).StartsWith(ScriptRenamer.NormPath(f.Location), StringComparison.OrdinalIgnoreCase));
+                    ScriptRenamer.NormPath(FileInfo.Path).StartsWith(ScriptRenamer.NormPath(f.Path), StringComparison.OrdinalIgnoreCase));
         }
 
         #endregion utility
