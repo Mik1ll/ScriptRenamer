@@ -13,7 +13,7 @@ namespace ScriptRenamer
             {
                 IEnumerable<string> s => string.Join(", ", s),
                 IEnumerable<TitleLanguage> t => string.Join(", ", t),
-                IEnumerable<IImportFolder> i => string.Join(", ", i.Select(f => f.Location)),
+                IEnumerable<IImportFolder> i => string.Join(", ", i.Select(f => f.Path)),
                 IEnumerable<AnimeTitle> t => string.Join(", ", t.Select(tt => tt.Title)),
                 IEnumerable<int> i => string.Join(", ", i),
                 IEnumerable<IAudioStream> a => string.Join(", ", a.Select(b => $"{b.LanguageCode} {b.SimplifiedCodec} {b.Channels}")),
