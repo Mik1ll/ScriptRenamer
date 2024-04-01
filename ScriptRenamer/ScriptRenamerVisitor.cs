@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -39,7 +39,7 @@ namespace ScriptRenamer
             GroupInfo = args.GroupInfo?.FirstOrDefault();
             Script = args.Script;
             Episodes = new List<IEpisode>(args.EpisodeInfo);
-            AvailableFolders = args.AvailableFolders;
+            AvailableFolders = new List<IImportFolder>(args.AvailableFolders);
         }
 
         public bool Renaming { get; set; } = true;

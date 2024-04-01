@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -77,18 +77,18 @@ namespace ScriptRenamer
                 : null;
         }
 
-        private static MoveEventArgs RenameArgsToMoveArgs(RenameEventArgs args) => new()
+        private static MoveEventArgs RenameArgsToMoveArgs(RenameEventArgs args) =>
+        new(
+            args.Script,
+            ImportFolderRepo is not null ? ((IEnumerable)ImportFolderRepo.GetAll()).Cast<IImportFolder>().Where(a => a.DropFolderType != DropFolderType.Excluded).ToList<IImportFolder>() : new List<IImportFolder>(),
+            args.FileInfo,
+            args.VideoInfo,
+            args.EpisodeInfo,
+            args.AnimeInfo,
+            args.GroupInfo
+        )
         {
             Cancel = args.Cancel,
-            AvailableFolders = ImportFolderRepo is not null
-                ? ((IEnumerable)ImportFolderRepo.GetAll()).Cast<IImportFolder>()
-                .Where(a => a.DropFolderType != DropFolderType.Excluded).ToList<IImportFolder>()
-                : new List<IImportFolder>(),
-            FileInfo = args.FileInfo,
-            AnimeInfo = args.AnimeInfo,
-            GroupInfo = args.GroupInfo,
-            EpisodeInfo = args.EpisodeInfo,
-            Script = args.Script
         };
 
         private static Type GetTypeFromAssemblies(string typeName)
