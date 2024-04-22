@@ -118,7 +118,7 @@ namespace ScriptRenamer
                     if (i < oldsubfoldersplit.Length)
                         subfolder += oldsubfoldersplit[i] + Path.DirectorySeparatorChar;
                     else
-                        throw new ArgumentException("Could not find subfolder from wildcard");
+                        throw new ScriptRenamerException("Could not find subfolder from wildcard");
                 else
                     subfolder += newsubfoldersplit[i] + Path.DirectorySeparatorChar;
             subfolder = NormPath(subfolder);
@@ -145,7 +145,7 @@ namespace ScriptRenamer
                         || string.Equals(NormPath(f.Path), NormPath(visitor.Destination), StringComparison.OrdinalIgnoreCase))
                 );
                 if (destfolder is null)
-                    throw new ArgumentException($"Bad destination: {visitor.Destination}");
+                    throw new ScriptRenamerException($"Bad destination: {visitor.Destination}");
             }
 
             var olddestfolder = args.AvailableFolders.OrderByDescending(f => f.Path.Length)
@@ -201,11 +201,11 @@ namespace ScriptRenamer
         private static void CheckBadArgs(ScriptRenamerVisitor visitor)
         {
             if (string.IsNullOrWhiteSpace(visitor.Script?.Script))
-                throw new ArgumentException("Script is empty or null");
+                throw new ScriptRenamerException("Script is empty or null");
             if (visitor.Script.Type != nameof(ScriptRenamer))
-                throw new ArgumentException($"Script doesn't match {nameof(ScriptRenamer)}");
+                throw new ScriptRenamerException($"Script doesn't match {nameof(ScriptRenamer)}");
             if (visitor.AnimeInfo == null || visitor.EpisodeInfo is null)
-                throw new ArgumentException("No anime and/or episode info");
+                throw new ScriptRenamerException("No anime and/or episode info");
         }
 
         public static string NormPath(string path)
