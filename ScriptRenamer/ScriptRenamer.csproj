@@ -9,8 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.3" GeneratePathProperty="true" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
-    <PackageReference Include="Shoko.Plugin.Abstractions" Version="3.0.0-alpha1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Shoko.Plugin.Abstractions" Version="3.0.0-alpha1" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>
