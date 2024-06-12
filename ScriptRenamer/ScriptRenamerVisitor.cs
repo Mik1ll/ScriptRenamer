@@ -32,6 +32,7 @@ namespace ScriptRenamer
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
                 .ThenBy(e => e.EpisodeNumber)
                 .FirstOrDefault();
+            VideoInfo = args.VideoInfo;
             var seq = EpisodeInfo?.EpisodeNumber - 1 ?? 0;
             LastEpisodeNumber = args.EpisodeInfo.Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
                 .OrderBy(e => e.EpisodeNumber).TakeWhile(e => e.EpisodeNumber == (seq += 1)).LastOrDefault()?.EpisodeNumber ?? -1;
@@ -41,6 +42,7 @@ namespace ScriptRenamer
             Episodes = new List<IEpisode>(args.EpisodeInfo);
             AvailableFolders = new List<IImportFolder>(args.AvailableFolders);
         }
+
 
         public bool Renaming { get; set; } = true;
         public bool FindLastLocation { get; set; }
@@ -53,6 +55,7 @@ namespace ScriptRenamer
         public IEpisode EpisodeInfo { get; set; }
         public IRenameScript Script { get; set; }
         public List<IEpisode> Episodes { get; set; }
+        public IVideo VideoInfo { get; set; }
 
         private int LastEpisodeNumber { get; set; }
 

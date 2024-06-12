@@ -148,8 +148,8 @@
       },
       "Shoko.Plugin.Abstractions": {
         "type": "Transitive",
-        "resolved": "3.0.0-alpha1",
-        "contentHash": "iIYsOVnYhKt2O+DtpQEMO4Ygi7TgJQEVFJpqJA+GHArFTPxHmnn4Ke+K2paiP6FvdLbdxJ7MB4uqfah2EoT8VA=="
+        "resolved": "3.0.0-alpha8",
+        "contentHash": "J/jK6+/XipSfA37rQyfUpfj1A4fcYxT9HzOS2VdmNCD8g0JDrDOUNYNKmyT3J4NZfpbDXTw5tIOmXJN0dewTig=="
       },
       "System.Diagnostics.DiagnosticSource": {
         "type": "Transitive",
@@ -171,7 +171,7 @@
         "dependencies": {
           "Antlr4.Runtime.Standard": "[4.9.3, )",
           "Microsoft.Extensions.Logging.Abstractions": "[6.0.0, )",
-          "Shoko.Plugin.Abstractions": "[3.0.0-alpha1, )"
+          "Shoko.Plugin.Abstractions": "[3.0.0-alpha8, )"
         }
       }
     }

@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
@@ -21,9 +19,6 @@ namespace ScriptRenamer
         private static string _script = string.Empty;
         private static ParserRuleContext _context;
         private static Exception _contextException;
-        private static readonly Type Repofact = GetTypeFromAssemblies("Shoko.Server.Repositories.RepoFactory");
-        private static readonly dynamic VideoLocalRepo = Repofact?.GetProperty("VideoLocal")?.GetValue(null);
-        private static readonly dynamic ImportFolderRepo = Repofact?.GetProperty("ImportFolder")?.GetValue(null);
 
         public ScriptRenamer(ILogger<ScriptRenamer> logger)
         {
@@ -48,19 +43,29 @@ namespace ScriptRenamer
 
         private static (IImportFolder destination, string subfolder)? FindLastFileLocation(ScriptRenamerVisitor visitor)
         {
-            if (VideoLocalRepo is null || ImportFolderRepo is null)
-                return null;
-            IImportFolder fld = null;
-            var lastFileLocation = ((IEnumerable<dynamic>)VideoLocalRepo.GetByAniDBAnimeID(visitor.AnimeInfo.ID))
-                .Where(vl => !string.Equals(vl.CRC32, visitor.FileInfo.VideoInfo?.Hashes.CRC, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(vl => vl.DateTimeUpdated)
-                .Select(vl => vl.GetBestVideoLocalPlace())
-                .FirstOrDefault(vlp => (fld = (IImportFolder)ImportFolderRepo.GetByID(vlp.ImportFolderID)) is not null &&
-                                       (fld.DropFolderType.HasFlag(DropFolderType.Destination) || fld.DropFolderType.HasFlag(DropFolderType.Excluded)));
-            string subFld = Path.GetDirectoryName(lastFileLocation?.FilePath);
-            if (fld is not null && subFld is not null)
-                return (fld, subFld);
-            return null;
+            var availableLocations = visitor.AnimeInfo.VideoList
+                .Where(vl => !string.Equals(vl.Hashes.ED2K, visitor.VideoInfo.Hashes.ED2K, StringComparison.OrdinalIgnoreCase))
+                .SelectMany(vl => vl.Locations.Select(l => new
+                {
+                    l.ImportFolder,
+                    SubFolder = SubfolderFromRelativePath(l)
+                }))
+                .Where(vlp => !string.IsNullOrWhiteSpace(vlp.SubFolder) && vlp.ImportFolder is not null &&
+                              (vlp.ImportFolder.DropFolderType.HasFlag(DropFolderType.Destination) ||
+                               vlp.ImportFolder.DropFolderType.HasFlag(DropFolderType.Excluded)));
+            var bestLocation = availableLocations.GroupBy(l => l.SubFolder)
+                .OrderByDescending(g => g.ToList().Count).Select(g => g.First())
+                .FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(bestLocation?.SubFolder) || bestLocation.ImportFolder is null) return null;
+            return (bestLocation.ImportFolder, bestLocation.SubFolder);
+        }
+        
+        
+        private static string? SubfolderFromRelativePath(IVideoFile videoFile)
+        {
+            return Path.GetDirectoryName(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }.Contains(videoFile.RelativePath[0])
+                ? videoFile.RelativePath[1..]
+                : videoFile.RelativePath);
         }
 
         public string GetFilename(RenameEventArgs args)
@@ -80,7 +85,7 @@ namespace ScriptRenamer
         private static MoveEventArgs RenameArgsToMoveArgs(RenameEventArgs args) =>
         new(
             args.Script,
-            ImportFolderRepo is not null ? ((IEnumerable)ImportFolderRepo.GetAll()).Cast<IImportFolder>().Where(a => a.DropFolderType != DropFolderType.Excluded).ToList<IImportFolder>() : new List<IImportFolder>(),
+            args.AvailableFolders,
             args.FileInfo,
             args.VideoInfo,
             args.EpisodeInfo,
@@ -90,12 +95,6 @@ namespace ScriptRenamer
         {
             Cancel = args.Cancel,
         };
-
-        private static Type GetTypeFromAssemblies(string typeName)
-        {
-            return AppDomain.CurrentDomain.GetAssemblies().Select(currentassembly => currentassembly.GetType(typeName, false, true))
-                .FirstOrDefault(t => t is not null);
-        }
 
         private static string GetNewSubfolder(MoveEventArgs args, ScriptRenamerVisitor visitor, IImportFolder olddestfolder)
         {
