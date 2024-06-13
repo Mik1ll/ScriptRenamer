@@ -97,7 +97,7 @@ namespace ScriptRenamerTests
                     a.PreferredTitle == "prefTitle" &&
                     a.Restricted &&
                     a.Type == AnimeType.Movie &&
-                    a.EpisodeCounts == new EpisodeCounts { Episodes = 20 } &&
+                    a.EpisodeCountDict[EpisodeType.Episode] == 20 &&
                     a.AirDate == new DateTime(2001, 1, 20) &&
                     a.Titles == new List<AnimeTitle>
                     {
@@ -227,10 +227,7 @@ namespace ScriptRenamerTests
             var visitor = new ScriptRenamerVisitor
             {
                 AnimeInfo = Mock.Of<IAnime>(x =>
-                    x.EpisodeCounts == new EpisodeCounts
-                    {
-                        Episodes = 25
-                    }),
+                    x.EpisodeCountDict[EpisodeType.Episode] == 25),
                 EpisodeInfo = Mock.Of<IEpisode>(x =>
                     x.Type == EpisodeType.Episode
                 )

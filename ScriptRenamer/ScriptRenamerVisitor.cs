@@ -251,29 +251,12 @@ namespace ScriptRenamer
                 SRP.VERSION => FileInfo.VideoInfo?.AniDB?.Version ?? 1,
                 SRP.WIDTH => FileInfo.VideoInfo?.MediaInfo?.Video?.Width ?? 0,
                 SRP.HEIGHT => FileInfo.VideoInfo?.MediaInfo?.Video?.Height ?? 0,
-                SRP.EPISODECOUNT => EpisodeInfo.Type switch
-                {
-                    EpisodeType.Episode => AnimeInfo.EpisodeCounts.Episodes,
-                    EpisodeType.Special => AnimeInfo.EpisodeCounts.Specials,
-                    EpisodeType.Credits => AnimeInfo.EpisodeCounts.Credits,
-                    EpisodeType.Trailer => AnimeInfo.EpisodeCounts.Trailers,
-                    EpisodeType.Parody => AnimeInfo.EpisodeCounts.Parodies,
-                    EpisodeType.Other => AnimeInfo.EpisodeCounts.Others,
-                    _ => throw new ParseCanceledException("Could not parse EpisodeCount", context.exception)
-                },
+                SRP.EPISODECOUNT => AnimeInfo.EpisodeCountDict[EpisodeInfo.Type],
                 SRP.BITDEPTH => FileInfo.VideoInfo?.MediaInfo?.Video?.BitDepth ?? 0,
                 SRP.AUDIOCHANNELS => FileInfo.VideoInfo?.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
                 SRP.SERIESINGROUP => GroupInfo?.Series.Count ?? 1,
                 SRP.LASTEPISODENUMBER => LastEpisodeNumber,
-                SRP.MAXEPISODECOUNT => new[]
-                {
-                    AnimeInfo.EpisodeCounts.Episodes,
-                    AnimeInfo.EpisodeCounts.Specials,
-                    AnimeInfo.EpisodeCounts.Credits,
-                    AnimeInfo.EpisodeCounts.Trailers,
-                    AnimeInfo.EpisodeCounts.Parodies,
-                    AnimeInfo.EpisodeCounts.Others
-                }.Max(),
+                SRP.MAXEPISODECOUNT => AnimeInfo.EpisodeCountDict.Values.Max(),
                 _ => throw new ParseCanceledException("Could not parse number_labels", context.exception)
             };
         }
