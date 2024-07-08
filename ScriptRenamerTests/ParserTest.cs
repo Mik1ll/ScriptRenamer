@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Antlr4.Runtime;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using ScriptRenamer;
@@ -93,11 +94,11 @@ namespace ScriptRenamerTests
 
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<IAnime>(a =>
+                AnimeInfo = Mock.Of<ISeries>(a =>
                     a.PreferredTitle == "prefTitle" &&
                     a.Restricted &&
                     a.Type == AnimeType.Movie &&
-                    a.EpisodeCountDict[EpisodeType.Episode] == 20 &&
+                    a.EpisodeCounts.Episodes == 20 &&
                     a.AirDate == new DateTime(2001, 1, 20) &&
                     a.Titles == new List<AnimeTitle>
                     {
@@ -213,7 +214,7 @@ namespace ScriptRenamerTests
             var context = parser.if_stmt();
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<IAnime>(a => a.Type == AnimeType.Movie)
+                AnimeInfo = Mock.Of<ISeries>(a => a.Type == AnimeType.Movie)
             };
             var result = visitor.Visit(context);
             Assert.IsNull(result);
@@ -226,11 +227,11 @@ namespace ScriptRenamerTests
             var context = parser.start();
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<IAnime>(x =>
-                    x.EpisodeCountDict[EpisodeType.Episode] == 25),
+                AnimeInfo = Mock.Of<ISeries>(x =>
+                    x.EpisodeCounts.Episodes == 25),
                 EpisodeInfo = Mock.Of<IEpisode>(x =>
                     x.Type == EpisodeType.Episode
-                )
+                ),
             };
             var result = visitor.Visit(context);
             Assert.IsNull(result);
@@ -243,7 +244,7 @@ namespace ScriptRenamerTests
             var context = parser.if_stmt().bool_expr();
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<IAnime>(a => a.PreferredTitle == "testing")
+                AnimeInfo = Mock.Of<ISeries>(a => a.PreferredTitle == "testing")
             };
             var result = (bool)visitor.Visit(context);
             Assert.IsTrue(result);
@@ -272,7 +273,7 @@ namespace ScriptRenamerTests
                         )
                     )
                 ),
-                AnimeInfo = Mock.Of<IAnime>(a =>
+                AnimeInfo = Mock.Of<ISeries>(a =>
                     a.Titles == new List<AnimeTitle>
                     {
                         new()
@@ -342,7 +343,7 @@ namespace ScriptRenamerTests
             var context = parser.start();
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<IAnime>(a => a.PreferredTitle == "wioewoihwoiehwoihweohwiowj")
+                AnimeInfo = Mock.Of<ISeries>(a => a.PreferredTitle == "wioewoihwoiehwoihweohwiowj")
             };
             _ = visitor.Visit(context);
             Assert.AreEqual("testtestingtestingwioewoihwoiehwoihweohwiowj", visitor.Filename);
@@ -394,37 +395,24 @@ namespace ScriptRenamerTests
         [DataRow("set 'test';\n destination set 'testdest';\n subfolder set 'subtest';\n cancel 'canc' 'elex';", null, null, null, "cancelex")]
         public void TestSkipCancel(string input, string eFilename, string eDestination, string eSubfolder, string exMsg)
         {
-            var parser = Setup(input);
-            var context = parser.start();
-            var visitor = new ScriptRenamerVisitor();
             try
             {
-                try
+                var renamer = new ScriptRenamer.ScriptRenamer(Mock.Of<ILogger<ScriptRenamer.ScriptRenamer>>());
+                var result = renamer.GetNewPath(new RelocationEventArgs<ScriptRenamerSettings>
                 {
-                    _ = visitor.Visit(context);
-                }
-                catch (SkipException)
-                {
-                    visitor.Filename = null;
-                    visitor.Destination = null;
-                    visitor.Subfolder = null;
-                }
-
-                Assert.AreEqual(visitor.Filename, eFilename);
-                visitor.Renaming = false;
-                try
-                {
-                    _ = visitor.Visit(context);
-                }
-                catch (SkipException)
-                {
-                    visitor.Filename = null;
-                    visitor.Destination = null;
-                    visitor.Subfolder = null;
-                }
-
-                Assert.AreEqual(eDestination, visitor.Destination);
-                Assert.AreEqual(eSubfolder, visitor.Subfolder);
+                    MoveEnabled = true,
+                    RenameEnabled = true,
+                    Settings = new ScriptRenamerSettings { Script = input },
+                    AnimeInfo = new[] { Mock.Of<ISeries>() },
+                    FileInfo = Mock.Of<IVideoFile>(vf => vf.VideoInfo == Mock.Of<IVideo>() && vf.Path == "C:\\blah"),
+                    EpisodeInfo = new[] { Mock.Of<IEpisode>() },
+                    GroupInfo = new[] { Mock.Of<IGroup>() },
+                    AvailableFolders = new[]
+                        { Mock.Of<IImportFolder>(f => f.Name == "testdest" && f.DropFolderType == DropFolderType.Destination && f.Path == "C:\\blah") }
+                });
+                Assert.AreEqual(result.FileName, eFilename);
+                Assert.AreEqual(eDestination, result.DestinationImportFolder?.Name);
+                Assert.AreEqual(eSubfolder, result.Path);
             }
             catch (Exception e)
             {
@@ -436,11 +424,19 @@ namespace ScriptRenamerTests
         [DynamicData(nameof(TestEpisodeSelectionAndNameData))]
         public void TestEpisodeSelectionAndName(List<IEpisode> episodes, int eEpisodeId, string eEpisodesString)
         {
-            var visitor = new ScriptRenamerVisitor(new MoveEventArgs(Mock.Of<IRenameScript>(), new List<IImportFolder>(), Mock.Of<IVideoFile>(),
-                Mock.Of<IVideo>(), episodes, new List<IAnime>
+            var visitor = new ScriptRenamerVisitor(new RelocationEventArgs<ScriptRenamerSettings>
+            {
+                RenameEnabled = true,
+                AvailableFolders = new List<IImportFolder>(),
+                FileInfo = Mock.Of<IVideoFile>(),
+                EpisodeInfo = episodes,
+                AnimeInfo = new List<ISeries>
                 {
-                    Mock.Of<IAnime>(a => a.ID == 10)
-                }, Array.Empty<IGroup>()), true);
+                    Mock.Of<ISeries>(a => a.ID == 10)
+                },
+                GroupInfo = Array.Empty<IGroup>(),
+                Settings = new ScriptRenamerSettings()
+            });
             Assert.AreEqual(eEpisodeId, visitor.EpisodeInfo.ID);
             var parser = Setup("add EpisodeNumbers;");
             var context = parser.start();
@@ -529,11 +525,19 @@ namespace ScriptRenamerTests
         [DynamicData(nameof(TestLastEpisodeNumberData))]
         public void TestLastEpisodeNumber(List<IEpisode> episodes, string expected)
         {
-            var visitor = new ScriptRenamerVisitor(new MoveEventArgs(Mock.Of<IRenameScript>(), Array.Empty<IImportFolder>(), Mock.Of<IVideoFile>(),
-                Mock.Of<IVideo>(), episodes, new List<IAnime>
+            var visitor = new ScriptRenamerVisitor(new RelocationEventArgs<ScriptRenamerSettings>
+            {
+                RenameEnabled = true,
+                Settings = new ScriptRenamerSettings(),
+                AvailableFolders = Array.Empty<IImportFolder>(),
+                FileInfo = Mock.Of<IVideoFile>(),
+                EpisodeInfo = episodes,
+                AnimeInfo = new List<ISeries>
                 {
-                    Mock.Of<IAnime>(a => a.ID == 10)
-                }, Array.Empty<IGroup>()), true);
+                    Mock.Of<ISeries>(a => a.ID == 10)
+                },
+                GroupInfo = Array.Empty<IGroup>()
+            });
             var parser = Setup("add EpisodeNumber '-' LastEpisodeNumber;");
             var context = parser.start();
             _ = visitor.Visit(context);

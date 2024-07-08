@@ -23,37 +23,41 @@ namespace ScriptRenamer
         {
         }
 
-        public ScriptRenamerVisitor(MoveEventArgs args, bool renaming, ILogger logger = null)
+        public ScriptRenamerVisitor(RelocationEventArgs<ScriptRenamerSettings> args, ILogger logger = null)
         {
             _logger = logger;
-            Renaming = renaming;
+            Renaming = args.RenameEnabled;
+            Moving = args.MoveEnabled;
             AnimeInfo = args.AnimeInfo.FirstOrDefault();
             EpisodeInfo = args.EpisodeInfo.Where(e => e.SeriesID == AnimeInfo?.ID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
                 .ThenBy(e => e.EpisodeNumber)
                 .FirstOrDefault();
-            VideoInfo = args.VideoInfo;
+            VideoInfo = args.FileInfo.VideoInfo;
             var seq = EpisodeInfo?.EpisodeNumber - 1 ?? 0;
             LastEpisodeNumber = args.EpisodeInfo.Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
                 .OrderBy(e => e.EpisodeNumber).TakeWhile(e => e.EpisodeNumber == (seq += 1)).LastOrDefault()?.EpisodeNumber ?? -1;
             FileInfo = args.FileInfo;
             GroupInfo = args.GroupInfo.FirstOrDefault();
-            Script = args.Script;
+            Script = args.Settings.Script;
             Episodes = new List<IEpisode>(args.EpisodeInfo);
             AvailableFolders = new List<IImportFolder>(args.AvailableFolders);
         }
 
 
         public bool Renaming { get; set; } = true;
+        public bool SkipRename { get; set; } = false;
+        public bool Moving { get; set; } = true;
+        public bool SkipMove { get; set; } = false;
         public bool FindLastLocation { get; set; }
         public bool RemoveReservedChars { get; set; }
 
         public List<IImportFolder> AvailableFolders { get; set; } = new();
         public IVideoFile FileInfo { get; set; }
-        public IAnime AnimeInfo { get; set; }
+        public ISeries AnimeInfo { get; set; }
         public IGroup GroupInfo { get; set; }
         public IEpisode EpisodeInfo { get; set; }
-        public IRenameScript Script { get; set; }
+        public string Script { get; set; }
         public List<IEpisode> Episodes { get; set; }
         public IVideo VideoInfo { get; set; }
 
@@ -251,12 +255,12 @@ namespace ScriptRenamer
                 SRP.VERSION => FileInfo.VideoInfo?.AniDB?.Version ?? 1,
                 SRP.WIDTH => FileInfo.VideoInfo?.MediaInfo?.Video?.Width ?? 0,
                 SRP.HEIGHT => FileInfo.VideoInfo?.MediaInfo?.Video?.Height ?? 0,
-                SRP.EPISODECOUNT => AnimeInfo.EpisodeCountDict[EpisodeInfo.Type],
+                SRP.EPISODECOUNT => AnimeInfo.EpisodeCounts[EpisodeInfo.Type],
                 SRP.BITDEPTH => FileInfo.VideoInfo?.MediaInfo?.Video?.BitDepth ?? 0,
                 SRP.AUDIOCHANNELS => FileInfo.VideoInfo?.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
                 SRP.SERIESINGROUP => GroupInfo?.Series.Count ?? 1,
                 SRP.LASTEPISODENUMBER => LastEpisodeNumber,
-                SRP.MAXEPISODECOUNT => AnimeInfo.EpisodeCountDict.Values.Max(),
+                SRP.MAXEPISODECOUNT => Enum.GetValues<EpisodeType>().Max(at => AnimeInfo.EpisodeCounts[at]),
                 _ => throw new ParseCanceledException("Could not parse number_labels", context.exception)
             };
         }
@@ -382,11 +386,11 @@ namespace ScriptRenamer
             {
                 SRP.CANCEL => throw new ParseCanceledException(
                     $"Line {context.cancel?.Line} Column {context.cancel?.Column} Cancelled: {AggregateString()}"),
-                SRP.SKIPRENAME => Renaming ? throw new SkipException() : null,
-                SRP.SKIPMOVE => Renaming ? null : throw new SkipException(),
+                SRP.SKIPRENAME => SkipRename = true,
+                SRP.SKIPMOVE => SkipMove = true,
                 SRP.FINDLASTLOCATION => FindLastLocation = true,
-                SRP.DESTINATION when !Renaming => DoAction(ref Destination),
-                SRP.SUBFOLDER when !Renaming => DoAction(ref Subfolder),
+                SRP.DESTINATION when Moving => DoAction(ref Destination),
+                SRP.SUBFOLDER when Moving => DoAction(ref Subfolder),
                 SRP.REMOVERESERVEDCHARS => RemoveReservedChars = true,
                 // @formatter:off
                 SRP.LOG => ((Func<object>)(() => { _logger.LogInformation("{LogStatement}", AggregateString()); return null; }))(),
