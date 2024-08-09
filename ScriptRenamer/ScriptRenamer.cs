@@ -11,7 +11,7 @@ using Shoko.Plugin.Abstractions.DataModels;
 
 namespace ScriptRenamer
 {
-    [Renamer(nameof(ScriptRenamer))]
+    [Renamer(nameof(ScriptRenamer), "Script Renamer")]
     // ReSharper disable once ClassNeverInstantiated.Global
     public class ScriptRenamer : IRenamer
     {
