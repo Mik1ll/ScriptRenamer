@@ -28,19 +28,19 @@ namespace ScriptRenamer
         {
             _logger = logger;
             Renaming = renaming;
-            AnimeInfo = args.Series.FirstOrDefault();
-            EpisodeInfo = args.Episodes.Where(e => e.SeriesID == AnimeInfo?.ID)
+            AnimeInfo = args.Series.First().AnidbAnime;
+            EpisodeInfo = args.Episodes.Select(s => s.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
                 .ThenBy(e => e.EpisodeNumber)
-                .FirstOrDefault();
+                .First();
             VideoInfo = args.Video;
             var seq = EpisodeInfo?.EpisodeNumber - 1 ?? 0;
-            LastEpisodeNumber = args.Episodes.Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
+            LastEpisodeNumber = args.Episodes.Select(e => e.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
                 .OrderBy(e => e.EpisodeNumber).TakeWhile(e => e.EpisodeNumber == (seq += 1)).LastOrDefault()?.EpisodeNumber ?? -1;
             FileInfo = args.File;
             GroupInfo = args.Groups.FirstOrDefault();
             Script = args.Script;
-            Episodes = new List<IEpisode>(args.Episodes);
+            Episodes = new List<IEpisode>(args.Episodes.Select(e => e.AnidbEpisode));
             AvailableFolders = new List<IImportFolder>(args.AvailableFolders);
         }
 
@@ -264,7 +264,7 @@ namespace ScriptRenamer
                 },
                 SRP.BITDEPTH => FileInfo.Video?.MediaInfo?.Video?.BitDepth ?? 0,
                 SRP.AUDIOCHANNELS => FileInfo.Video?.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
-                SRP.SERIESINGROUP => GroupInfo?.Series.Count ?? 1,
+                SRP.SERIESINGROUP => GroupInfo?.AllSeries.Count ?? 1,
                 SRP.LASTEPISODENUMBER => LastEpisodeNumber,
                 SRP.MAXEPISODECOUNT => new[]
                 {
