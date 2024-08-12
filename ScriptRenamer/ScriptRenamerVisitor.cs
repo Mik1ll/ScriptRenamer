@@ -28,11 +28,11 @@ namespace ScriptRenamer
         {
             _logger = logger;
             Renaming = renaming;
-            AnimeInfo = args.Series.First().AnidbAnime;
+            AnimeInfo = args.Series.FirstOrDefault()?.AnidbAnime;
             EpisodeInfo = args.Episodes.Select(s => s.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
                 .ThenBy(e => e.EpisodeNumber)
-                .First();
+                .FirstOrDefault();
             VideoInfo = args.Video;
             var seq = EpisodeInfo?.EpisodeNumber - 1 ?? 0;
             LastEpisodeNumber = args.Episodes.Select(e => e.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
