@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Antlr4.Runtime;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -400,17 +402,18 @@ namespace ScriptRenamerTests
             try
             {
                 var renamer = new ScriptRenamer.ScriptRenamer(Mock.Of<ILogger<ScriptRenamer.ScriptRenamer>>());
+                var testFolderPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "C:\\testfld" : "/testfld";
                 var result = renamer.GetNewPath(new RelocationEventArgs<ScriptRenamerSettings>
                 {
                     MoveEnabled = true,
                     RenameEnabled = true,
                     Settings = new ScriptRenamerSettings { Script = input },
                     Series = new[] { Mock.Of<IShokoSeries>(s => s.AnidbAnime == Mock.Of<ISeries>()) },
-                    File = Mock.Of<IVideoFile>(vf => vf.Video == Mock.Of<IVideo>() && vf.Path == "C:\\blah"),
+                    File = Mock.Of<IVideoFile>(vf => vf.Video == Mock.Of<IVideo>() && vf.Path == Path.Combine(testFolderPath, "testfile.mp4")),
                     Episodes = new[] { Mock.Of<IShokoEpisode>(se => se.AnidbEpisode == Mock.Of<IEpisode>()) },
                     Groups = new[] { Mock.Of<IShokoGroup>() },
                     AvailableFolders = new[]
-                        { Mock.Of<IImportFolder>(f => f.Name == "testdest" && f.DropFolderType == DropFolderType.Destination && f.Path == "C:\\blah") }
+                        { Mock.Of<IImportFolder>(f => f.Name == "testdest" && f.DropFolderType == DropFolderType.Destination && f.Path == testFolderPath) }
                 });
                 Assert.AreEqual(result.FileName, eFilename);
                 Assert.AreEqual(eDestination, result.DestinationImportFolder?.Name);
