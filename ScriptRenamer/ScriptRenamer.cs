@@ -70,9 +70,12 @@ namespace ScriptRenamer
                              add '[CEN] ';
                          else
                              add '[UNC] ';
-                     add '[' CRCUpper ']';
+
                      // Truncate filename just in case, old windows max path length is 260 chars
-                     filename set trunc(Filename, 120);
+                     if (len(Filename) > 120)
+                        filename set trunc(Filename, 120) '... ';
+
+                     add '[' CRCUpper ']';
 
                      if (SeriesInGroup > 1)
                        subfolder set GroupName '/' AnimeTitle;
