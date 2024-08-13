@@ -16,9 +16,9 @@
       },
       "Shoko.Plugin.Abstractions": {
         "type": "Direct",
-        "requested": "[3.0.0-alpha11, )",
-        "resolved": "3.0.0-alpha11",
-        "contentHash": "jpRtEtJ60hAYXPtCCEWUq2nWZ53NyQmTwpb/bQAWQeJRX7qUSbeBUBHyh69hKdoO4WFFslOUgX5gRn6Sgjs6Mw=="
+        "requested": "[4.0.0-beta1, )",
+        "resolved": "4.0.0-beta1",
+        "contentHash": "/i3vBGyiqjvClqTNuqHKVwF1quNXi35ch1I1mVAr6WrM0Hmbbdmk6OpbAmiszP5ahz0y7OtFGkCJuUHpp40hKQ=="
       }
     }
   }

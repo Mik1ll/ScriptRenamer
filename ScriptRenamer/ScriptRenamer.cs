@@ -7,56 +7,89 @@ using Microsoft.Extensions.Logging;
 using Shoko.Plugin.Abstractions;
 using Shoko.Plugin.Abstractions.Attributes;
 using Shoko.Plugin.Abstractions.DataModels;
+using Shoko.Plugin.Abstractions.Enums;
+using Shoko.Plugin.Abstractions.Events;
 
 
 namespace ScriptRenamer
 {
-    [Renamer(nameof(ScriptRenamer), "Script Renamer")]
-    // ReSharper disable once ClassNeverInstantiated.Global
-    public class ScriptRenamer : IRenamer
+    [RenamerID(nameof(ScriptRenamer))]
+    public class ScriptRenamer : IRenamer<ScriptRenamerSettings>
     {
         private readonly ILogger<ScriptRenamer> _logger;
         private static string _script = string.Empty;
         private static ParserRuleContext _context;
         private static Exception _contextException;
 
+        public string Name { get; } = nameof(ScriptRenamer);
+        public string Description { get; } = "Made by Mikill(Discord)/Mik1ll(Github)";
+        public bool SupportsMoving { get; } = true;
+        public bool SupportsRenaming { get; } = true;
+
+        public ScriptRenamerSettings DefaultSettings { get; } = new()
+        {
+            Script = """
+                     if (GroupShort)
+                         add '[' GroupShort '] ';
+                     else if (GroupLong)
+                         add '[' GroupLong '] ';
+                     if (AnimeTitleEnglish)
+                         add AnimeTitleEnglish ' ';
+                     else
+                         add AnimeTitle ' ';
+                     // Only adds episode numbers and titles if it is an episode or movie with parts
+                     if (not (AnimeType is Movie and EpisodeTitleEnglish contains 'Complete Movie')) {
+                         add EpisodeNumbers pad 10;
+                         if (Version > 1)
+                             add 'v' Version;
+                         add ' ';
+                         // Don't bother with episode names if there are multiple file relations or if it doesn't have a name (these start with Episode xx)
+                         if (not MultiLinked and EpisodeTitleEnglish and not EpisodeTitleEnglish contains 'Episode') {
+                             // Episode names can get LONG, so truncate them
+                             add trunc(EpisodeTitleEnglish, 35);
+                             if (len(EpisodeTitleEnglish) > 35)
+                                 add '...';
+                             add ' ';
+                         }
+                     }
+                     add '(' Resolution ' ' VideoCodecShort ' ';
+                     if (BitDepth and BitDepth != 8)
+                         add BitDepth 'bit';
+                     if (Source)
+                       add ' ' Source;
+                     add ') ';
+                     if (DubLanguages has English)
+                         if (DubLanguages has Japanese)
+                             add '[DUAL-AUDIO] ';
+                         else
+                             add '[DUB] ';
+                     else if (DubLanguages has Japanese and not SubLanguages has English)
+                         add '[RAW] ';
+                     if (Restricted)
+                         if (Censored)
+                             add '[CEN] ';
+                         else
+                             add '[UNC] ';
+                     add '[' CRCUpper ']';
+                     // Truncate filename just in case, old windows max path length is 260 chars
+                     filename set trunc(Filename, 120);
+
+                     if (SeriesInGroup > 1)
+                       subfolder set GroupName '/' AnimeTitle;
+                     else
+                       subfolder set AnimeTitle;
+                     """
+        };
+
         public ScriptRenamer(ILogger<ScriptRenamer> logger)
         {
             _logger = logger;
         }
 
-        public (IImportFolder destination, string subfolder) GetDestination(MoveEventArgs args)
-        {
-            var visitor = new ScriptRenamerVisitor(args, false, _logger);
-            CheckBadArgs(visitor);
-            SetupAndLaunch(visitor);
-            if (visitor.FindLastLocation)
-            {
-                var result = FindLastFileLocation(visitor);
-                if (result.HasValue)
-                    return result.Value;
-            }
-
-            var (destfolder, olddestfolder) = GetNewAndOldDestinations(args, visitor);
-            var subfolder = GetNewSubfolder(args, visitor, olddestfolder);
-            return (destfolder, subfolder);
-        }
-
-        public string GetFilename(MoveEventArgs args)
-        {
-            var visitor = new ScriptRenamerVisitor(args, true, _logger);
-            CheckBadArgs(visitor);
-            SetupAndLaunch(visitor);
-            return !string.IsNullOrWhiteSpace(visitor.Filename)
-                ? RemoveInvalidFilenameChars(visitor.RemoveReservedChars ? visitor.Filename : visitor.Filename.ReplaceInvalidPathCharacters()) +
-                  Path.GetExtension(args.File.FileName)
-                : string.Empty;
-        }
-
         private static (IImportFolder destination, string subfolder)? FindLastFileLocation(ScriptRenamerVisitor visitor)
         {
             var availableLocations = visitor.AnimeInfo.Videos
-                .Where(vl => !string.Equals(vl.Hashes.ED2K, visitor.VideoInfo.Hashes.ED2K, StringComparison.OrdinalIgnoreCase))
+                .Where(vl => !string.Equals(vl.Hashes.ED2K, visitor.Video.Hashes.ED2K, StringComparison.OrdinalIgnoreCase))
                 .SelectMany(vl => vl.Locations.Select(l => new
                 {
                     l.ImportFolder,
@@ -73,17 +106,18 @@ namespace ScriptRenamer
         }
 
 
-        private static string? SubfolderFromRelativePath(IVideoFile videoFile)
+        private static string SubfolderFromRelativePath(IVideoFile videoFile)
         {
             return Path.GetDirectoryName(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }.Contains(videoFile.RelativePath[0])
                 ? videoFile.RelativePath[1..]
                 : videoFile.RelativePath);
         }
 
-        private static string GetNewSubfolder(MoveEventArgs args, ScriptRenamerVisitor visitor, IImportFolder olddestfolder)
+
+        private static string GetNewSubfolder(RelocationEventArgs args, ScriptRenamerVisitor visitor, IImportFolder olddestfolder)
         {
             if (visitor.Subfolder is null)
-                return RemoveInvalidFilenameChars(args.Series.OrderBy(a => a.ID).First().PreferredTitle is var title && visitor.RemoveReservedChars
+                return RemoveInvalidFilenameChars(args.Series.Select(s => s.AnidbAnime).OrderBy(a => a.ID).First().PreferredTitle is var title && visitor.RemoveReservedChars
                     ? title
                     : title.ReplaceInvalidPathCharacters());
             var oldsubfolder = string.Empty;
@@ -109,7 +143,7 @@ namespace ScriptRenamer
             return subfolder;
         }
 
-        private static (IImportFolder destfolder, IImportFolder olddestfolder) GetNewAndOldDestinations(MoveEventArgs args, ScriptRenamerVisitor visitor)
+        private static (IImportFolder destfolder, IImportFolder olddestfolder) GetNewAndOldDestinations(RelocationEventArgs args, ScriptRenamerVisitor visitor)
         {
             IImportFolder destfolder;
             if (string.IsNullOrWhiteSpace(visitor.Destination))
@@ -169,7 +203,7 @@ namespace ScriptRenamer
 
         private static void SetupAndLaunch(ScriptRenamerVisitor visitor)
         {
-            SetContext(visitor.Script.Script);
+            SetContext(visitor.Script);
             try
             {
                 _ = visitor.Visit(_context);
@@ -184,10 +218,8 @@ namespace ScriptRenamer
 
         private static void CheckBadArgs(ScriptRenamerVisitor visitor)
         {
-            if (string.IsNullOrWhiteSpace(visitor.Script?.Script))
+            if (string.IsNullOrWhiteSpace(visitor.Script))
                 throw new ScriptRenamerException("Script is empty or null");
-            if (visitor.Script.Type != nameof(ScriptRenamer))
-                throw new ScriptRenamerException($"Script doesn't match {nameof(ScriptRenamer)}");
             if (visitor.AnimeInfo == null || visitor.EpisodeInfo is null)
                 throw new ScriptRenamerException("No anime and/or episode info");
         }
@@ -203,6 +235,44 @@ namespace ScriptRenamer
             filename = string.Concat(filename.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
             return filename;
         }
+
+
+        public RelocationResult GetNewPath(RelocationEventArgs<ScriptRenamerSettings> args)
+        {
+            var visitor = new ScriptRenamerVisitor(args, _logger);
+            CheckBadArgs(visitor);
+            SetupAndLaunch(visitor);
+            IImportFolder destfolder = null;
+            string subfolder = null;
+            string filename = null;
+            if (!visitor.SkipMove)
+            {
+                if (visitor.FindLastLocation)
+                {
+                    (destfolder, subfolder) = FindLastFileLocation(visitor) ?? (null, null);
+                }
+
+                if (destfolder is null || subfolder is null)
+                {
+                    (destfolder, var olddestfolder) = GetNewAndOldDestinations(args, visitor);
+                    subfolder = GetNewSubfolder(args, visitor, olddestfolder);
+                }
+            }
+
+            if (!visitor.SkipRename)
+                filename = !string.IsNullOrWhiteSpace(visitor.Filename)
+                    ? RemoveInvalidFilenameChars(visitor.RemoveReservedChars ? visitor.Filename : visitor.Filename.ReplaceInvalidPathCharacters()) +
+                      Path.GetExtension(args.File.FileName)
+                    : null;
+
+            return new RelocationResult { Path = subfolder, DestinationImportFolder = destfolder, FileName = filename };
+        }
+    }
+
+    public class ScriptRenamerSettings
+    {
+        [RenamerSetting(Type = RenamerSettingType.Code, Language = CodeLanguage.PlainText)]
+        public string Script { get; set; }
     }
 
     public class SkipException : Exception

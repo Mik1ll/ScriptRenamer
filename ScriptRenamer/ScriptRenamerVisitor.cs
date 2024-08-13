@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Shoko.Plugin.Abstractions;
 using Shoko.Plugin.Abstractions.DataModels;
 using Shoko.Plugin.Abstractions.DataModels.Shoko;
+using Shoko.Plugin.Abstractions.Events;
 using SRP = ScriptRenamerParser;
 
 namespace ScriptRenamer
@@ -24,28 +25,32 @@ namespace ScriptRenamer
         {
         }
 
-        public ScriptRenamerVisitor(MoveEventArgs args, bool renaming, ILogger logger = null)
+        public ScriptRenamerVisitor(RelocationEventArgs<ScriptRenamerSettings> args, ILogger logger = null)
         {
             _logger = logger;
-            Renaming = renaming;
-            AnimeInfo = args.Series.FirstOrDefault()?.AnidbAnime;
-            EpisodeInfo = args.Episodes.Select(s => s.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID)
+            Renaming = args.RenameEnabled;
+            Moving = args.MoveEnabled;
+            AnimeInfo = args.Series.Select(s => s.AnidbAnime).FirstOrDefault();
+            EpisodeInfo = args.Episodes.Select(se => se.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
                 .ThenBy(e => e.EpisodeNumber)
                 .FirstOrDefault();
-            VideoInfo = args.Video;
+            Video = args.File.Video;
             var seq = EpisodeInfo?.EpisodeNumber - 1 ?? 0;
-            LastEpisodeNumber = args.Episodes.Select(e => e.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
+            LastEpisodeNumber = args.Episodes.Select(se => se.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID && e.Type == EpisodeInfo?.Type)
                 .OrderBy(e => e.EpisodeNumber).TakeWhile(e => e.EpisodeNumber == (seq += 1)).LastOrDefault()?.EpisodeNumber ?? -1;
             FileInfo = args.File;
             GroupInfo = args.Groups.FirstOrDefault();
-            Script = args.Script;
+            Script = args.Settings.Script;
             Episodes = new List<IEpisode>(args.Episodes.Select(e => e.AnidbEpisode));
             AvailableFolders = new List<IImportFolder>(args.AvailableFolders);
         }
 
 
         public bool Renaming { get; set; } = true;
+        public bool SkipRename { get; set; } = false;
+        public bool Moving { get; set; } = true;
+        public bool SkipMove { get; set; } = false;
         public bool FindLastLocation { get; set; }
         public bool RemoveReservedChars { get; set; }
 
@@ -54,9 +59,9 @@ namespace ScriptRenamer
         public ISeries AnimeInfo { get; set; }
         public IShokoGroup GroupInfo { get; set; }
         public IEpisode EpisodeInfo { get; set; }
-        public IRenameScript Script { get; set; }
+        public string Script { get; set; }
         public List<IEpisode> Episodes { get; set; }
-        public IVideo VideoInfo { get; set; }
+        public IVideo Video { get; set; }
 
         private int LastEpisodeNumber { get; set; }
 
@@ -252,29 +257,12 @@ namespace ScriptRenamer
                 SRP.VERSION => FileInfo.Video?.AniDB?.Version ?? 1,
                 SRP.WIDTH => FileInfo.Video?.MediaInfo?.Video?.Width ?? 0,
                 SRP.HEIGHT => FileInfo.Video?.MediaInfo?.Video?.Height ?? 0,
-                SRP.EPISODECOUNT => EpisodeInfo.Type switch
-                {
-                    EpisodeType.Episode => AnimeInfo.EpisodeCounts.Episodes,
-                    EpisodeType.Special => AnimeInfo.EpisodeCounts.Specials,
-                    EpisodeType.Credits => AnimeInfo.EpisodeCounts.Credits,
-                    EpisodeType.Trailer => AnimeInfo.EpisodeCounts.Trailers,
-                    EpisodeType.Parody => AnimeInfo.EpisodeCounts.Parodies,
-                    EpisodeType.Other => AnimeInfo.EpisodeCounts.Others,
-                    _ => throw new ArgumentOutOfRangeException(nameof(EpisodeInfo.Type))
-                },
+                SRP.EPISODECOUNT => AnimeInfo.EpisodeCounts[EpisodeInfo.Type],
                 SRP.BITDEPTH => FileInfo.Video?.MediaInfo?.Video?.BitDepth ?? 0,
                 SRP.AUDIOCHANNELS => FileInfo.Video?.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
-                SRP.SERIESINGROUP => GroupInfo?.AllSeries.Count ?? 1,
+                SRP.SERIESINGROUP => GroupInfo?.Series.Count ?? 1,
                 SRP.LASTEPISODENUMBER => LastEpisodeNumber,
-                SRP.MAXEPISODECOUNT => new[]
-                {
-                    AnimeInfo.EpisodeCounts.Episodes,
-                    AnimeInfo.EpisodeCounts.Specials,
-                    AnimeInfo.EpisodeCounts.Credits,
-                    AnimeInfo.EpisodeCounts.Trailers,
-                    AnimeInfo.EpisodeCounts.Parodies,
-                    AnimeInfo.EpisodeCounts.Others
-                }.Max(),
+                SRP.MAXEPISODECOUNT => Enum.GetValues<EpisodeType>().Max(at => AnimeInfo.EpisodeCounts[at]),
                 _ => throw new ParseCanceledException("Could not parse number_labels", context.exception)
             };
         }
@@ -400,11 +388,11 @@ namespace ScriptRenamer
             {
                 SRP.CANCEL => throw new ParseCanceledException(
                     $"Line {context.cancel?.Line} Column {context.cancel?.Column} Cancelled: {AggregateString()}"),
-                SRP.SKIPRENAME => Renaming ? throw new SkipException() : null,
-                SRP.SKIPMOVE => Renaming ? null : throw new SkipException(),
+                SRP.SKIPRENAME => SkipRename = true,
+                SRP.SKIPMOVE => SkipMove = true,
                 SRP.FINDLASTLOCATION => FindLastLocation = true,
-                SRP.DESTINATION when !Renaming => DoAction(ref Destination),
-                SRP.SUBFOLDER when !Renaming => DoAction(ref Subfolder),
+                SRP.DESTINATION when Moving => DoAction(ref Destination),
+                SRP.SUBFOLDER when Moving => DoAction(ref Subfolder),
                 SRP.REMOVERESERVEDCHARS => RemoveReservedChars = true,
                 // @formatter:off
                 SRP.LOG => ((Func<object>)(() => { _logger.LogInformation("{LogStatement}", AggregateString()); return null; }))(),
