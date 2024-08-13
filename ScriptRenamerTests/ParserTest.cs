@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Antlr4.Runtime;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using ScriptRenamer;
-using Shoko.Plugin.Abstractions;
 using Shoko.Plugin.Abstractions.DataModels;
+using Shoko.Plugin.Abstractions.DataModels.Shoko;
+using Shoko.Plugin.Abstractions.Events;
 
 // ReSharper disable PossibleUnintendedReferenceComparison
 
@@ -129,14 +131,14 @@ namespace ScriptRenamerTests
                     }
                 ),
                 FileInfo = Mock.Of<IVideoFile>(file =>
-                    file.VideoInfo.Hashes == Mock.Of<IHashes>(hashes =>
+                    file.Video.Hashes == Mock.Of<IHashes>(hashes =>
                         hashes.CRC == "abc123") &&
-                    file.VideoInfo.MediaInfo == Mock.Of<IMediaContainer>(x =>
+                    file.Video.MediaInfo == Mock.Of<IMediaContainer>(x =>
                         x.Video == Mock.Of<IVideoStream>(vs =>
                             vs.StandardizedResolution == "1080p" &&
                             vs.BitDepth == 8 &&
                             vs.SimplifiedCodec == "x.264")) &&
-                    file.VideoInfo.AniDB == Mock.Of<IAniDBFile>(af =>
+                    file.Video.AniDB == Mock.Of<IAniDBFile>(af =>
                         af.ReleaseGroup == Mock.Of<IReleaseGroup>(rg =>
                             rg.Name == "testGroup" &&
                             rg.ShortName == "TG") &&
@@ -265,7 +267,7 @@ namespace ScriptRenamerTests
             var visitor = new ScriptRenamerVisitor
             {
                 FileInfo = Mock.Of<IVideoFile>(v =>
-                    v.VideoInfo == Mock.Of<IVideo>(vf => vf.AniDB == Mock.Of<IAniDBFile>(m =>
+                    v.Video == Mock.Of<IVideo>(vf => vf.AniDB == Mock.Of<IAniDBFile>(m =>
                             m.MediaInfo == Mock.Of<AniDBMediaData>(md =>
                                 md.AudioLanguages == new List<TitleLanguage> { TitleLanguage.Afrikaans, TitleLanguage.Japanese } &&
                                 md.SubLanguages == new List<TitleLanguage> { TitleLanguage.Hebrew, TitleLanguage.Galician }
@@ -403,10 +405,10 @@ namespace ScriptRenamerTests
                     MoveEnabled = true,
                     RenameEnabled = true,
                     Settings = new ScriptRenamerSettings { Script = input },
-                    AnimeInfo = new[] { Mock.Of<ISeries>() },
-                    FileInfo = Mock.Of<IVideoFile>(vf => vf.VideoInfo == Mock.Of<IVideo>() && vf.Path == "C:\\blah"),
-                    EpisodeInfo = new[] { Mock.Of<IEpisode>() },
-                    GroupInfo = new[] { Mock.Of<IGroup>() },
+                    Series = new[] { Mock.Of<IShokoSeries>(s => s.AnidbAnime == Mock.Of<ISeries>()) },
+                    File = Mock.Of<IVideoFile>(vf => vf.Video == Mock.Of<IVideo>() && vf.Path == "C:\\blah"),
+                    Episodes = new[] { Mock.Of<IShokoEpisode>(se => se.AnidbEpisode == Mock.Of<IEpisode>()) },
+                    Groups = new[] { Mock.Of<IShokoGroup>() },
                     AvailableFolders = new[]
                         { Mock.Of<IImportFolder>(f => f.Name == "testdest" && f.DropFolderType == DropFolderType.Destination && f.Path == "C:\\blah") }
                 });
@@ -428,13 +430,13 @@ namespace ScriptRenamerTests
             {
                 RenameEnabled = true,
                 AvailableFolders = new List<IImportFolder>(),
-                FileInfo = Mock.Of<IVideoFile>(),
-                EpisodeInfo = episodes,
-                AnimeInfo = new List<ISeries>
+                File = Mock.Of<IVideoFile>(),
+                Episodes = episodes.Select(e => Mock.Of<IShokoEpisode>(se => se.AnidbEpisode == e)).ToList(),
+                Series = new List<IShokoSeries>
                 {
-                    Mock.Of<ISeries>(a => a.ID == 10)
+                    Mock.Of<IShokoSeries>(s => s.AnidbAnime == Mock.Of<ISeries>(a => a.ID == 10))
                 },
-                GroupInfo = Array.Empty<IGroup>(),
+                Groups = Array.Empty<IShokoGroup>(),
                 Settings = new ScriptRenamerSettings()
             });
             Assert.AreEqual(eEpisodeId, visitor.EpisodeInfo.ID);
@@ -530,13 +532,13 @@ namespace ScriptRenamerTests
                 RenameEnabled = true,
                 Settings = new ScriptRenamerSettings(),
                 AvailableFolders = Array.Empty<IImportFolder>(),
-                FileInfo = Mock.Of<IVideoFile>(),
-                EpisodeInfo = episodes,
-                AnimeInfo = new List<ISeries>
+                File = Mock.Of<IVideoFile>(),
+                Episodes = episodes.Select(e => Mock.Of<IShokoEpisode>(se => se.AnidbEpisode == e)).ToList(),
+                Series = new List<IShokoSeries>
                 {
-                    Mock.Of<ISeries>(a => a.ID == 10)
+                    Mock.Of<IShokoSeries>(s => s.AnidbAnime == Mock.Of<ISeries>(a => a.ID == 10))
                 },
-                GroupInfo = Array.Empty<IGroup>()
+                Groups = Array.Empty<IShokoGroup>()
             });
             var parser = Setup("add EpisodeNumber '-' LastEpisodeNumber;");
             var context = parser.start();

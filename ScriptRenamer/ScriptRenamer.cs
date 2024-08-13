@@ -8,6 +8,7 @@ using Shoko.Plugin.Abstractions;
 using Shoko.Plugin.Abstractions.Attributes;
 using Shoko.Plugin.Abstractions.DataModels;
 using Shoko.Plugin.Abstractions.Enums;
+using Shoko.Plugin.Abstractions.Events;
 
 
 namespace ScriptRenamer
@@ -87,8 +88,8 @@ namespace ScriptRenamer
 
         private static (IImportFolder destination, string subfolder)? FindLastFileLocation(ScriptRenamerVisitor visitor)
         {
-            var availableLocations = visitor.AnimeInfo.VideoList
-                .Where(vl => !string.Equals(vl.Hashes.ED2K, visitor.VideoInfo.Hashes.ED2K, StringComparison.OrdinalIgnoreCase))
+            var availableLocations = visitor.AnimeInfo.Videos
+                .Where(vl => !string.Equals(vl.Hashes.ED2K, visitor.Video.Hashes.ED2K, StringComparison.OrdinalIgnoreCase))
                 .SelectMany(vl => vl.Locations.Select(l => new
                 {
                     l.ImportFolder,
@@ -116,14 +117,14 @@ namespace ScriptRenamer
         private static string GetNewSubfolder(RelocationEventArgs args, ScriptRenamerVisitor visitor, IImportFolder olddestfolder)
         {
             if (visitor.Subfolder is null)
-                return RemoveInvalidFilenameChars(args.AnimeInfo.OrderBy(a => a.ID).First().PreferredTitle is var title && visitor.RemoveReservedChars
+                return RemoveInvalidFilenameChars(args.Series.Select(s => s.AnidbAnime).OrderBy(a => a.ID).First().PreferredTitle is var title && visitor.RemoveReservedChars
                     ? title
                     : title.ReplaceInvalidPathCharacters());
             var oldsubfolder = string.Empty;
             if (olddestfolder is not null)
             {
                 var olddest = NormPath(olddestfolder.Path) + Path.DirectorySeparatorChar;
-                oldsubfolder = Path.GetRelativePath(olddest, Path.GetDirectoryName(NormPath(args.FileInfo.Path))!);
+                oldsubfolder = Path.GetRelativePath(olddest, Path.GetDirectoryName(NormPath(args.File.Path))!);
             }
 
             var subfolder = string.Empty;
@@ -149,7 +150,7 @@ namespace ScriptRenamer
             {
                 destfolder = args.AvailableFolders
                     // Order by common prefix (stronger version of same drive)
-                    .OrderByDescending(f => string.Concat(NormPath(args.FileInfo.Path)
+                    .OrderByDescending(f => string.Concat(NormPath(args.File.Path)
                         .TakeWhile((ch, i) => i < NormPath(f.Path).Length
                                               && char.ToUpperInvariant(NormPath(f.Path)[i]) == char.ToUpperInvariant(ch))).Length)
                     .FirstOrDefault(f => f.DropFolderType.HasFlag(DropFolderType.Destination));
@@ -167,7 +168,7 @@ namespace ScriptRenamer
 
             var olddestfolder = args.AvailableFolders.OrderByDescending(f => f.Path.Length)
                 .FirstOrDefault(f => f.DropFolderType.HasFlag(DropFolderType.Destination)
-                                     && NormPath(args.FileInfo.Path).StartsWith(NormPath(f.Path), StringComparison.OrdinalIgnoreCase));
+                                     && NormPath(args.File.Path).StartsWith(NormPath(f.Path), StringComparison.OrdinalIgnoreCase));
             return (destfolder, olddestfolder);
         }
 
@@ -261,7 +262,7 @@ namespace ScriptRenamer
             if (!visitor.SkipRename)
                 filename = !string.IsNullOrWhiteSpace(visitor.Filename)
                     ? RemoveInvalidFilenameChars(visitor.RemoveReservedChars ? visitor.Filename : visitor.Filename.ReplaceInvalidPathCharacters()) +
-                      Path.GetExtension(args.FileInfo.FileName)
+                      Path.GetExtension(args.File.FileName)
                     : null;
 
             return new RelocationResult { Path = subfolder, DestinationImportFolder = destfolder, FileName = filename };
