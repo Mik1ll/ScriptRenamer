@@ -248,7 +248,7 @@ namespace ScriptRenamerTests
             var context = parser.if_stmt().bool_expr();
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<ISeries>(a => a.PreferredTitle == "testing")
+                ShokoSeries = Mock.Of<IShokoSeries>(a => a.PreferredTitle == "testing")
             };
             var result = (bool)visitor.Visit(context);
             Assert.IsTrue(result);
@@ -347,7 +347,7 @@ namespace ScriptRenamerTests
             var context = parser.start();
             var visitor = new ScriptRenamerVisitor
             {
-                AnimeInfo = Mock.Of<ISeries>(a => a.PreferredTitle == "wioewoihwoiehwoihweohwiowj")
+                ShokoSeries = Mock.Of<IShokoSeries>(a => a.PreferredTitle == "wioewoihwoiehwoihweohwiowj")
             };
             _ = visitor.Visit(context);
             Assert.AreEqual("testtestingtestingwioewoihwoiehwoihweohwiowj", visitor.Filename);

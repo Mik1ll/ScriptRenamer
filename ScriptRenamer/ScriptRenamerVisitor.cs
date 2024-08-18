@@ -30,7 +30,8 @@ namespace ScriptRenamer
             _logger = logger;
             Renaming = args.RenameEnabled;
             Moving = args.MoveEnabled;
-            AnimeInfo = args.Series.Select(s => s.AnidbAnime).FirstOrDefault();
+            ShokoSeries = args.Series.FirstOrDefault();
+            AnimeInfo = ShokoSeries?.AnidbAnime;
             EpisodeInfo = args.Episodes.Select(se => se.AnidbEpisode).Where(e => e.SeriesID == AnimeInfo?.ID)
                 .OrderBy(e => e.Type == EpisodeType.Other ? (EpisodeType)int.MinValue : e.Type)
                 .ThenBy(e => e.EpisodeNumber)
@@ -57,6 +58,7 @@ namespace ScriptRenamer
         public List<IImportFolder> AvailableFolders { get; set; } = new();
         public IVideoFile FileInfo { get; set; }
         public ISeries AnimeInfo { get; set; }
+        public IShokoSeries ShokoSeries { get; set; }
         public IShokoGroup GroupInfo { get; set; }
         public IEpisode EpisodeInfo { get; set; }
         public string Script { get; set; }
@@ -166,7 +168,7 @@ namespace ScriptRenamer
             int pad = context.number_atom() is null ? 0 : (int)Visit(context.number_atom());
             return context.label.Type switch
             {
-                SRP.ANIMETITLEPREFERRED => AnimeInfo.PreferredTitle,
+                SRP.ANIMETITLEPREFERRED => ShokoSeries.PreferredTitle,
                 SRP.ANIMETITLEROMAJI => AnimeTitleLanguage(TitleLanguage.Romaji),
                 SRP.ANIMETITLEENGLISH => AnimeTitleLanguage(TitleLanguage.English),
                 SRP.ANIMETITLEJAPANESE => AnimeTitleLanguage(TitleLanguage.Japanese),
