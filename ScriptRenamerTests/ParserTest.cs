@@ -135,11 +135,11 @@ namespace ScriptRenamerTests
                 FileInfo = Mock.Of<IVideoFile>(file =>
                     file.Video.Hashes == Mock.Of<IHashes>(hashes =>
                         hashes.CRC == "abc123") &&
-                    file.Video.MediaInfo == Mock.Of<IMediaContainer>(x =>
-                        x.Video == Mock.Of<IVideoStream>(vs =>
-                            vs.StandardizedResolution == "1080p" &&
+                    file.Video.MediaInfo == Mock.Of<IMediaInfo>(x =>
+                        x.VideoStream == Mock.Of<IVideoStream>(vs =>
+                            vs.Resolution == "1080p" &&
                             vs.BitDepth == 8 &&
-                            vs.SimplifiedCodec == "x.264")) &&
+                            vs.Codec == Mock.Of<IStreamCodecInfo>(c => c.Simplified == "x.264"))) &&
                     file.Video.AniDB == Mock.Of<IAniDBFile>(af =>
                         af.ReleaseGroup == Mock.Of<IReleaseGroup>(rg =>
                             rg.Name == "testGroup" &&
