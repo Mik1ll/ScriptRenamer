@@ -155,7 +155,7 @@ namespace ScriptRenamer
             {
                 SRP.RESTRICTED => AnimeInfo.Restricted,
                 SRP.CENSORED => FileInfo.Video?.AniDB?.Censored ?? false,
-                SRP.CHAPTERED => FileInfo.Video?.MediaInfo?.Chaptered ?? false,
+                SRP.CHAPTERED => FileInfo.Video?.MediaInfo?.Chapters.Any() ?? false,
                 SRP.MANUALLYLINKED => FileInfo.Video?.AniDB is null,
                 SRP.INDROPSOURCE => OldDestination()?.DropFolderType.HasFlag(DropFolderType.Source) ?? false,
                 SRP.MULTILINKED => Episodes.Count(e => e.ID == AnimeInfo.ID) > 1,
@@ -188,13 +188,13 @@ namespace ScriptRenamer
                 SRP.SOURCE => FileInfo.Video?.AniDB?.Source.Contains("unknown", StringComparison.OrdinalIgnoreCase) ?? true
                     ? null
                     : FileInfo.Video?.AniDB.Source,
-                SRP.RESOLUTION => FileInfo.Video?.MediaInfo?.Video?.StandardizedResolution,
+                SRP.RESOLUTION => FileInfo.Video?.MediaInfo?.VideoStream?.Resolution,
                 SRP.ANIMETYPE => AnimeInfo.Type.ToString(),
                 SRP.EPISODETYPE => EpisodeInfo.Type.ToString(),
                 SRP.EPISODEPREFIX => GetPrefix(EpisodeInfo.Type),
-                SRP.VIDEOCODECLONG => FileInfo.Video?.MediaInfo?.Video?.CodecID,
-                SRP.VIDEOCODECSHORT => FileInfo.Video?.MediaInfo?.Video?.SimplifiedCodec,
-                SRP.DURATION => FileInfo.Video?.MediaInfo?.General?.Duration.ToString(CultureInfo.InvariantCulture),
+                SRP.VIDEOCODECLONG => FileInfo.Video?.MediaInfo?.VideoStream?.Codec.Raw,
+                SRP.VIDEOCODECSHORT => FileInfo.Video?.MediaInfo?.VideoStream?.Codec.Simplified,
+                SRP.DURATION => FileInfo.Video?.MediaInfo?.Duration.TotalSeconds.ToString(CultureInfo.InvariantCulture),
                 SRP.GROUPNAME => GroupInfo?.PreferredTitle,
                 SRP.OLDFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.FileName),
                 SRP.ORIGINALFILENAME => System.IO.Path.GetFileNameWithoutExtension(FileInfo.Video?.AniDB?.OriginalFilename),
@@ -257,11 +257,11 @@ namespace ScriptRenamer
                 SRP.EPISODEID => EpisodeInfo.ID,
                 SRP.EPISODENUMBER => EpisodeInfo.EpisodeNumber,
                 SRP.VERSION => FileInfo.Video?.AniDB?.Version ?? 1,
-                SRP.WIDTH => FileInfo.Video?.MediaInfo?.Video?.Width ?? 0,
-                SRP.HEIGHT => FileInfo.Video?.MediaInfo?.Video?.Height ?? 0,
+                SRP.WIDTH => FileInfo.Video?.MediaInfo?.VideoStream?.Width ?? 0,
+                SRP.HEIGHT => FileInfo.Video?.MediaInfo?.VideoStream?.Height ?? 0,
                 SRP.EPISODECOUNT => AnimeInfo.EpisodeCounts[EpisodeInfo.Type],
-                SRP.BITDEPTH => FileInfo.Video?.MediaInfo?.Video?.BitDepth ?? 0,
-                SRP.AUDIOCHANNELS => FileInfo.Video?.MediaInfo?.Audio?.Select(a => a.Channels).Max() ?? 0,
+                SRP.BITDEPTH => FileInfo.Video?.MediaInfo?.VideoStream?.BitDepth ?? 0,
+                SRP.AUDIOCHANNELS => FileInfo.Video?.MediaInfo?.AudioStreams?.Select(a => a.Channels).Max() ?? 0,
                 SRP.SERIESINGROUP => GroupInfo?.Series.Count ?? 1,
                 SRP.LASTEPISODENUMBER => LastEpisodeNumber,
                 SRP.MAXEPISODECOUNT => Enum.GetValues<EpisodeType>().Max(at => AnimeInfo.EpisodeCounts[at]),
@@ -452,19 +452,13 @@ namespace ScriptRenamer
         {
             return tokenType switch
             {
-                SRP.AUDIOCODECS => FileInfo.Video?.MediaInfo?.Audio?.Select(a => a.SimplifiedCodec).Distinct().ToList()
+                SRP.AUDIOCODECS => FileInfo.Video?.MediaInfo?.AudioStreams?.Select(a => a.Codec.Simplified).Distinct().ToList()
                                    ?? new List<string>(),
                 SRP.DUBLANGUAGES => FileInfo.Video?.AniDB?.MediaInfo.AudioLanguages?.Distinct().ToList()
-                                    ?? FileInfo.Video?.MediaInfo?.Audio?.Select(a =>
-                                        ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown
-                                            ? ParseEnum<TitleLanguage>(a.Title, false)
-                                            : l).Distinct().ToList()
+                                    ?? FileInfo.Video?.MediaInfo?.AudioStreams?.Select(a => a.Language).Distinct().ToList()
                                     ?? new List<TitleLanguage>(),
                 SRP.SUBLANGUAGES => FileInfo.Video?.AniDB?.MediaInfo?.SubLanguages?.Distinct().ToList()
-                                    ?? FileInfo.Video?.MediaInfo?.Subs?.Select(a =>
-                                        ParseEnum<TitleLanguage>(a.LanguageName, false) is var l && l is TitleLanguage.Unknown
-                                            ? ParseEnum<TitleLanguage>(a.Title, false)
-                                            : l).Distinct().ToList()
+                                    ?? FileInfo.Video?.MediaInfo?.TextStreams?.Select(a => a.Language).Distinct().ToList()
                                     ?? new List<TitleLanguage>(),
                 SRP.ANIMETITLES => AnimeInfo.Titles.ToList(),
                 SRP.EPISODETITLES => EpisodeInfo.Titles.ToList(),
