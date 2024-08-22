@@ -1,39 +1,95 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Nullable>disable</Nullable>
-    <LangVersion>12</LangVersion>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+        <!--<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>-->
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <LangVersion>12</LangVersion>
+        <Nullable>disable</Nullable>
+        <!--<DisableFastUpToDateCheck>True</DisableFastUpToDateCheck>-->
+        <Deterministic>true</Deterministic>
+        <DeterministicSourcePaths>true</DeterministicSourcePaths>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.3" GeneratePathProperty="true" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
-    <PackageReference Include="Shoko.Plugin.Abstractions" Version="4.0.0-beta5" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <_GeneratedFiles Include="GeneratedCode/*" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="GeneratedCode" />
-  </ItemGroup>
-
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <ItemGroup>
-      <Compile Remove="GeneratedCode/*.cs" />
+        <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.3" GeneratePathProperty="true" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" ExcludeAssets="runtime" />
+        <PackageReference Include="Shoko.Plugin.Abstractions" Version="4.0.0-beta5" ExcludeAssets="runtime" />
     </ItemGroup>
-    <Exec Command="antlr4 -Dlanguage=CSharp -visitor -no-listener ScriptRenamer.g4 -o GeneratedCode" />
+
     <ItemGroup>
-      <Compile Include="GeneratedCode/*.cs" />
+        <_GeneratedFiles Include="GeneratedCode/*" />
     </ItemGroup>
-  </Target>
-  <Target Name="PostClean" AfterTargets="CoreClean">
-    <Delete Files="@(_GeneratedFiles)" />
-  </Target>
+
+    <ItemGroup>
+        <Folder Include="GeneratedCode" />
+    </ItemGroup>
+
+    <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+        <ItemGroup>
+            <Compile Remove="GeneratedCode/*.cs" />
+        </ItemGroup>
+        <Exec Command="antlr4 -Dlanguage=CSharp -visitor -no-listener ScriptRenamer.g4 -o GeneratedCode" />
+        <ItemGroup>
+            <Compile Include="GeneratedCode/*.cs" />
+        </ItemGroup>
+    </Target>
+
+    <Target Name="PostClean" AfterTargets="CoreClean">
+        <Delete Files="@(_GeneratedFiles)" />
+    </Target>
+
+    <Target Name="UpdateAssemblyInfo" BeforeTargets="BeforeCompile">
+        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=0 --always" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="GitVerTag" />
+        </Exec>
+        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=7 --always --long --dirty" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="GitInfo" />
+        </Exec>
+        <ItemGroup>
+            <AssemblyAttributes Include="AssemblyVersion">
+                <_Parameter1>$([System.Text.RegularExpressions.Regex]::Match("$(GitVerTag)", "\d+\.\d+\.\d+"))</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyInformationalVersion">
+                <_Parameter1>$(GitInfo)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyProduct">
+                <_Parameter1>$(ProjectName)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyTitle">
+                <_Parameter1>$(ProjectName)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+                <_Parameter1>ScriptRenamerTests</_Parameter1>
+            </AssemblyAttributes>
+        </ItemGroup>
+        <MakeDir Directories="$(IntermediateOutputPath)" />
+        <WriteCodeFragment Language="C#" OutputFile="$(GeneratedAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)" />
+        <ItemGroup>
+            <Compile Include="$(GeneratedAssemblyInfoFile)" />
+        </ItemGroup>
+    </Target>
+
+
+    <Target Name="PackageForRelease" AfterTargets="Publish">
+        <PropertyGroup>
+            <ZipDir>$(PublishDir)ZipDir/</ZipDir>
+        </PropertyGroup>
+
+        <ItemGroup>
+            <ZipOut Include="$(PublishDir)/**/*.*" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(ZipOut)" DestinationFolder="$(ZipDir)$(ProjectName)/%(RecursiveDir)" />
+        <ZipDirectory SourceDirectory="$(ZipDir)" DestinationFile="$(OutDir)$(ProjectName)_$(GitInfo).zip" Overwrite="true" />
+        <RemoveDir Directories="$(ZipDir)" />
+    </Target>
+
+    <Target Name="Cleaner" AfterTargets="AfterClean">
+        <RemoveDir Directories="$(OutDir)" />
+    </Target>
 
 </Project>
