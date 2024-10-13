@@ -82,10 +82,10 @@ namespace ScriptRenamer
 
             if (upper)
             {
-                return (int)char.ToUpperInvariant(o);
+                return char.ToUpperInvariant(o);
             }
 
-            return (int)char.ToLowerInvariant(o);
+            return char.ToLowerInvariant(o);
         }
 
         public int Mark()

@@ -17,7 +17,7 @@
     <ItemGroup>
         <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.3" GeneratePathProperty="true" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" ExcludeAssets="runtime" />
-        <PackageReference Include="Shoko.Plugin.Abstractions" Version="4.0.0-beta5" ExcludeAssets="runtime" />
+        <PackageReference Include="Shoko.Plugin.Abstractions" Version="4.0.0" ExcludeAssets="runtime" />
     </ItemGroup>
 
     <ItemGroup>
@@ -43,10 +43,10 @@
     </Target>
 
     <Target Name="UpdateAssemblyInfo" BeforeTargets="BeforeCompile">
-        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=0 --always" ConsoleToMSBuild="true">
+        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=0 --always" ConsoleToMsBuild="true">
             <Output TaskParameter="ConsoleOutput" PropertyName="GitVerTag" />
         </Exec>
-        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=7 --always --long --dirty" ConsoleToMSBuild="true">
+        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=7 --always --long --dirty" ConsoleToMsBuild="true">
             <Output TaskParameter="ConsoleOutput" PropertyName="GitInfo" />
         </Exec>
         <ItemGroup>

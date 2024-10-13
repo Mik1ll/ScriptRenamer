@@ -21,10 +21,10 @@ namespace ScriptRenamer
         private static ParserRuleContext _context;
         private static Exception _contextException;
 
-        public string Name { get; } = nameof(ScriptRenamer);
-        public string Description { get; } = "Made by Mikill(Discord)/Mik1ll(Github)";
-        public bool SupportsMoving { get; } = true;
-        public bool SupportsRenaming { get; } = true;
+        public string Name => nameof(ScriptRenamer);
+        public string Description => "Made by Mikill(Discord)/Mik1ll(Github)";
+        public bool SupportsMoving => true;
+        public bool SupportsRenaming => true;
 
         public ScriptRenamerSettings DefaultSettings { get; } = new()
         {
@@ -190,8 +190,10 @@ namespace ScriptRenamer
             ScriptRenamerLexer lexer = new(lowerstream);
             lexer.AddErrorListener(ExceptionErrorListener.Instance);
             CommonTokenStream tokenStream = new(lexer);
-            ScriptRenamerParser parser = new(tokenStream);
-            parser.ErrorHandler = new BailErrorStrategy();
+            ScriptRenamerParser parser = new(tokenStream)
+            {
+                ErrorHandler = new BailErrorStrategy()
+            };
             parser.AddErrorListener(ExceptionErrorListener.Instance);
             try
             {
