@@ -6,7 +6,6 @@
         <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
         <!--<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>-->
         <EnableDynamicLoading>true</EnableDynamicLoading>
-        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
         <LangVersion>12</LangVersion>
         <Nullable>disable</Nullable>
         <!--<DisableFastUpToDateCheck>True</DisableFastUpToDateCheck>-->
@@ -42,37 +41,16 @@
         <Delete Files="@(_GeneratedFiles)" />
     </Target>
 
-    <Target Name="UpdateAssemblyInfo" BeforeTargets="BeforeCompile">
-        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=0 --always" ConsoleToMsBuild="true">
-            <Output TaskParameter="ConsoleOutput" PropertyName="GitVerTag" />
-        </Exec>
-        <Exec Command="git describe --match=v[0-9]%2A --tags --abbrev=7 --always --long --dirty" ConsoleToMsBuild="true">
+    <Target Name="GetGitAssemblyVersion" BeforeTargets="GetAssemblyVersion">
+        <Exec Command="git describe --match &quot;v[0-9]*.[0-9]*.[0-9]*&quot; --tags --abbrev=7 --long --dirty --always" ConsoleToMsBuild="true">
             <Output TaskParameter="ConsoleOutput" PropertyName="GitInfo" />
         </Exec>
-        <ItemGroup>
-            <AssemblyAttributes Include="AssemblyVersion">
-                <_Parameter1>$([System.Text.RegularExpressions.Regex]::Match("$(GitVerTag)", "\d+\.\d+\.\d+"))</_Parameter1>
-            </AssemblyAttributes>
-            <AssemblyAttributes Include="AssemblyInformationalVersion">
-                <_Parameter1>$(GitInfo)</_Parameter1>
-            </AssemblyAttributes>
-            <AssemblyAttributes Include="AssemblyProduct">
-                <_Parameter1>$(ProjectName)</_Parameter1>
-            </AssemblyAttributes>
-            <AssemblyAttributes Include="AssemblyTitle">
-                <_Parameter1>$(ProjectName)</_Parameter1>
-            </AssemblyAttributes>
-            <AssemblyAttributes Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-                <_Parameter1>ScriptRenamerTests</_Parameter1>
-            </AssemblyAttributes>
-        </ItemGroup>
-        <MakeDir Directories="$(IntermediateOutputPath)" />
-        <WriteCodeFragment Language="C#" OutputFile="$(GeneratedAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)" />
-        <ItemGroup>
-            <Compile Include="$(GeneratedAssemblyInfoFile)" />
-        </ItemGroup>
-    </Target>
 
+        <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(GitInfo)', '\d+\.\d+\.\d+'))">
+            <Version>$([System.Text.RegularExpressions.Regex]::Match('$(GitInfo)', '\d+\.\d+\.\d+'))</Version>
+            <InformationalVersion>$(GitInfo)</InformationalVersion>
+        </PropertyGroup>
+    </Target>
 
     <Target Name="PackageForRelease" AfterTargets="Publish">
         <PropertyGroup>
@@ -80,16 +58,12 @@
         </PropertyGroup>
 
         <ItemGroup>
-            <ZipOut Include="$(PublishDir)/**/*.*" />
+            <ZipOut Include="$(PublishDir)**/*" />
         </ItemGroup>
 
         <Copy SourceFiles="@(ZipOut)" DestinationFolder="$(ZipDir)$(ProjectName)/%(RecursiveDir)" />
-        <ZipDirectory SourceDirectory="$(ZipDir)" DestinationFile="$(OutDir)$(ProjectName)_$(GitInfo).zip" Overwrite="true" />
+        <ZipDirectory SourceDirectory="$(ZipDir)" DestinationFile="$(PublishDir)../$(ProjectName)_$(GitInfo).zip" Overwrite="true" />
         <RemoveDir Directories="$(ZipDir)" />
-    </Target>
-
-    <Target Name="Cleaner" AfterTargets="AfterClean">
-        <RemoveDir Directories="$(OutDir)" />
     </Target>
 
 </Project>
