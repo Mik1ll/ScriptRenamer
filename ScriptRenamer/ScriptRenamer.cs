@@ -120,9 +120,10 @@ namespace ScriptRenamer
         private static string GetNewSubfolder(RelocationEventArgs args, ScriptRenamerVisitor visitor, IImportFolder olddestfolder)
         {
             if (visitor.Subfolder is null)
-                return RemoveInvalidFilenameChars(args.Series.Select(s => s.AnidbAnime).OrderBy(a => a.ID).First().PreferredTitle is var title && visitor.RemoveReservedChars
-                    ? title
-                    : title.ReplaceInvalidPathCharacters());
+                return RemoveInvalidFilenameChars(
+                    args.Series.Select(s => s.AnidbAnime).OrderBy(a => a.ID).First().PreferredTitle is var title && visitor.RemoveReservedChars
+                        ? title
+                        : title.ReplaceInvalidPathCharacters());
             var oldsubfolder = string.Empty;
             if (olddestfolder is not null)
             {
@@ -270,7 +271,8 @@ namespace ScriptRenamer
                       Path.GetExtension(args.File.FileName)
                     : null;
 
-            return new RelocationResult { Path = subfolder, DestinationImportFolder = destfolder, FileName = filename };
+            return new RelocationResult
+                { Path = subfolder, DestinationImportFolder = destfolder, FileName = filename, SkipMove = visitor.SkipMove, SkipRename = visitor.SkipRename };
         }
     }
 
